@@ -219,7 +219,7 @@ export default function Workspace() {
           <span className="status-chip">{meta?.today || '—'}</span>
         </header>
 
-        <div className={`content${isSection ? '' : ''}`}>
+        <div className="content">
           <div className="col">
             {error ? <div className="notice">{error}</div> : null}
 
