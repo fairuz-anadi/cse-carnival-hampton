@@ -323,3 +323,12 @@ textarea { min-height: 78px; resize: vertical; }
   .hello .wave { transform-origin: 70% 70%; animation: wave 2.4s ease-in-out 3; }
   @keyframes wave { 0%,60%,100% { transform: rotate(0deg); } 70% { transform: rotate(14deg); } 80% { transform: rotate(-8deg); } 90% { transform: rotate(12deg); } }
 }
+
+/* acting-as switcher */
+.role-switch { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 3px; gap: 2px; }
+.role-switch button { border: 0; background: none; cursor: pointer; border-radius: var(--radius-pill); padding: 5px 12px; font-size: 12px; font-weight: 500; color: var(--text-muted); white-space: nowrap; transition: background 150ms ease, color 150ms ease; }
+.role-switch button:hover { color: var(--text); }
+.role-switch button[aria-pressed='true'] { background: var(--black); color: var(--white); font-weight: 600; }
+@media (max-width: 1023px) { .role-switch { display: none; } }
+
+.staff-note { font-size: 12.5px; color: var(--text-muted); align-self: center; }

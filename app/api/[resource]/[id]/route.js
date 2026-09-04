@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getOne, updateRecord, deleteRecord, RESOURCES } from '@/lib/store';
 import { errorResponse, notFound } from '@/lib/api-error';
+import { requireAdmin } from '@/lib/require-admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,6 +16,8 @@ export async function GET(_req, { params }) {
 async function patch(req, params) {
   const { resource, id } = await params;
   if (!RESOURCES[resource]) return notFound('Resource');
+  const denied = requireAdmin();
+  if (denied) return denied;
   try {
     const row = updateRecord(resource, id, await req.json());
     return row ? NextResponse.json(row) : notFound(id);
@@ -30,6 +33,8 @@ export const PUT = (req, ctx) => patch(req, ctx.params);
 export async function DELETE(_req, { params }) {
   const { resource, id } = await params;
   if (!RESOURCES[resource]) return notFound('Resource');
+  const denied = requireAdmin();
+  if (denied) return denied;
   const result = deleteRecord(resource, id);
   return result ? NextResponse.json({ ok: true, ...result }) : notFound(id);
 }

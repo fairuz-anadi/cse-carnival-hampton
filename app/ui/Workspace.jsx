@@ -36,6 +36,21 @@ export default function Workspace() {
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
   const [query, setQuery] = useState('');
+  const [actor, setActor] = useState(null);
+
+  /** Switching actor changes what the API and the agent will allow. */
+  async function switchRole(role) {
+    const res = await fetch('/api/me', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) return;
+    const next = await res.json();
+    setActor(next);
+    await loadAll();
+    setToast(`Now acting as ${next.label}.`);
+  }
 
   const loadResource = useCallback(async (resource) => {
     const res = await fetch(`/api/${resource}`, { cache: 'no-store' });
@@ -49,6 +64,8 @@ export default function Workspace() {
       await Promise.all(ORDER.map(loadResource));
       const m = await fetch('/api/meta', { cache: 'no-store' });
       if (m.ok) setMeta(await m.json());
+      const who = await fetch('/api/me', { cache: 'no-store' });
+      if (who.ok) setActor(await who.json());
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -119,7 +136,10 @@ export default function Workspace() {
     }
   }
 
-  const myId = meta?.profile?.student_id;
+  const myId = actor?.profile?.student_id || meta?.profile?.student_id;
+  // Managing the five systems is staff work. Students still book rooms and
+  // take their own place at events, so those actions stay.
+  const canManage = actor?.permissions?.can_manage_records === true;
   const isRegistered = (row) => !!myId && (row.registrations || []).some((r) => r.student_id === myId);
 
   function extraActions(row) {
@@ -157,7 +177,7 @@ export default function Workspace() {
     setQuery('');
   }
 
-  const initials = (meta?.profile?.name || 'CO').split(' ').map((w) => w[0]).slice(0, 2).join('');
+  const initials = (actor?.profile?.name || meta?.profile?.name || 'CO').split(' ').map((w) => w[0]).slice(0, 2).join('');
 
   return (
     <div className="app">
@@ -188,8 +208,8 @@ export default function Workspace() {
           <div className="who-card">
             <span className="avatar">{initials}</span>
             <div style={{ minWidth: 0 }}>
-              <div className="who-name">{meta?.profile?.name || 'Loading…'}</div>
-              <div className="who-sub">{meta?.profile?.student_id || ''}</div>
+              <div className="who-name">{actor?.profile?.name || meta?.profile?.name || 'Loading…'}</div>
+              <div className="who-sub">{actor?.label || meta?.profile?.student_id || ''}</div>
             </div>
           </div>
         </div>
@@ -216,6 +236,18 @@ export default function Workspace() {
             <span className={`dot${meta?.provider ? '' : ' off'}`} />
             {meta?.provider ? meta.provider : 'no key'}
           </span>
+          <div className="role-switch" role="group" aria-label="Acting as">
+            {(actor?.available_roles || []).map((r) => (
+              <button
+                key={r.role}
+                aria-pressed={actor?.role === r.role}
+                onClick={() => switchRole(r.role)}
+                title={`Act as ${r.label}`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
           <span className="status-chip">{meta?.today || '—'}</span>
         </header>
 
@@ -237,9 +269,15 @@ export default function Workspace() {
                     <p>{cfg.blurb}</p>
                   </div>
                   <span className="spacer" />
-                  <button className="btn primary" onClick={() => { setBooking(null); setEditing('new'); }}>
-                    <Plus size={15} /> Add {cfg.singular}
-                  </button>
+                  {canManage ? (
+                    <button className="btn primary" onClick={() => { setBooking(null); setEditing('new'); }}>
+                      <Plus size={15} /> Add {cfg.singular}
+                    </button>
+                  ) : (
+                    <span className="staff-note" title="Switch to Department Admin in the header to manage records">
+                      Read only — switch to Department Admin to add or edit
+                    </span>
+                  )}
                   <button className="btn" onClick={loadAll} title="Reload from the database">
                     <RefreshCw size={15} /> Refresh
                   </button>
@@ -268,7 +306,8 @@ export default function Workspace() {
                 {loaded ? (
                   <RecordTable resource={view} rows={rows} busyId={busyId}
                     onEdit={(row) => { setBooking(null); setEditing(row); }}
-                    onDelete={remove} extraActions={extraActions} query={query} />
+                    onDelete={remove} extraActions={extraActions} query={query}
+                    canManage={canManage} />
                 ) : (
                   <div className="table-wrap">
                     {[0, 1, 2, 3, 4].map((i) => <div key={i} className="skel skel-row" style={{ width: `${90 - i * 9}%` }} />)}
