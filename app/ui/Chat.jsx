@@ -4,6 +4,16 @@ import { useEffect, useRef, useState } from 'react';
 
 const WRITE_TOOLS = new Set(['book_room', 'cancel_room_booking', 'register_for_event', 'cancel_event_registration']);
 
+/** The arguments the model actually passed, short enough to sit inside a chip. */
+function formatArgs(args) {
+  const entries = Object.entries(args || {}).filter(([, v]) => v !== undefined && v !== null && v !== '');
+  if (!entries.length) return '';
+  return entries
+    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join('/') : v}`)
+    .join(', ')
+    .slice(0, 70);
+}
+
 const SUGGESTIONS = [
   'When is my next class?',
   'What have I got due this week?',
@@ -11,6 +21,7 @@ const SUGGESTIONS = [
   'Which labs have a projector and fit at least 30?',
   'Book Room 7A02 tomorrow from 3 PM to 5 PM',
   'Just book me any room tomorrow afternoon',
+  'Register me for the Git & GitHub workshop',
 ];
 
 export default function Chat({ provider, onDataChanged }) {
@@ -82,8 +93,13 @@ export default function Chat({ provider, onDataChanged }) {
             {m.trace?.length ? (
               <div className="trace">
                 {m.trace.map((t, j) => (
-                  <span className="tchip" key={j} title={JSON.stringify(t.args)}>
-                    <b>{t.tool}</b> → {t.result}
+                  <span
+                    className={`tchip${WRITE_TOOLS.has(t.tool) ? ' write' : ''}`}
+                    key={j}
+                    title={JSON.stringify(t.args, null, 2)}
+                  >
+                    <b>{t.tool}</b>
+                    {formatArgs(t.args) ? <i>({formatArgs(t.args)})</i> : null} → {t.result}
                   </span>
                 ))}
               </div>

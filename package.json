@@ -9,7 +9,8 @@
     "start": "next start -p 3000",
     "seed": "node scripts/seed.mjs",
     "db:reset": "node scripts/seed.mjs --force",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:agent": "node scripts/agent-smoke.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",

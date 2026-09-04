@@ -8,7 +8,7 @@ A campus data manager and an AI agent sitting on top of the same live database. 
 
 ## Project overview
 
-CampusOS holds five campus systems — class schedules, rooms, events, announcements and assignment deadlines — in a SQLite database seeded from the provided JSON files on first boot. The dashboard on the left lists all five and supports add, edit and delete on every one of them; changes are written to the database and appear in the interface immediately with no manual refresh. The agent on the right talks to a language model with **real function calling**: it has twelve tools that query and mutate that same database, and it decides which to call. Because those tools run SQL at call time and nothing is cached, a change made in the dashboard a second earlier is what the agent reads. Every answer shows the tool calls it made underneath it, so you can see exactly what it read and what it did.
+CampusOS holds five campus systems — class schedules, rooms, events, announcements and assignment deadlines — in a SQLite database seeded from the provided JSON files on first boot. The dashboard on the left lists all five and supports add, edit and delete on every one of them; changes are written to the database and appear in the interface immediately with no manual refresh. The agent on the right talks to a language model with **real function calling**: it has fifteen tools that query and mutate that same database, and it decides which to call. Because those tools run SQL at call time and nothing is cached, a change made in the dashboard a second earlier is what the agent reads. Every answer shows the tool calls it made underneath it, so you can see exactly what it read and what it did.
 
 The agent also handles the awkward cases. It checks announcements against the timetable and tells you when a notice has moved a class. It refuses to book a room that already has a booking or a scheduled class in that window, and says what is in the way. When a request is too vague to act on — "just book me any room tomorrow afternoon" — it asks which room and which hours instead of guessing. And it declines to touch another student's registrations or bookings.
 
@@ -102,9 +102,35 @@ The five systems are normalised into seven tables — room bookings and event re
 
 ## Agent tools
 
-`get_class_schedule` · `get_next_class` · `get_assignments` · `get_announcements` · `get_events` · `get_rooms` · `find_available_rooms` · `book_room` · `cancel_room_booking` · `register_for_event` · `cancel_event_registration` · `whats_on`
+Eleven read tools and four that write.
 
-`find_available_rooms` is the one worth calling out: it excludes a room if it has an overlapping booking **or** a timetabled class in that window, so "free" means actually free.
+**Read** — `get_current_datetime` · `get_class_schedule` · `get_next_class` · `get_assignments` · `get_announcements` · `get_events` · `get_rooms` · `find_available_rooms` · `check_room_availability` · `whats_on` · `get_my_bookings_and_registrations`
+
+**Write** — `book_room` · `cancel_room_booking` · `register_for_event` · `cancel_event_registration`
+
+Three of these are worth calling out:
+
+- `find_available_rooms` excludes a room if it has an overlapping booking, a timetabled class **or** an event held there in that window, so "free" means actually free.
+- `check_room_availability` answers "is 7A02 free at 3?" without writing anything. Without it the only way to test a named room is to try booking it, which is a mutation.
+- `get_current_datetime` returns the campus clock in Asia/Dhaka, so "tomorrow" is resolved against the real date instead of whatever the model assumed. Every date the tools accept is resolved in that same zone, on any machine.
+
+There is deliberately **no** tool that creates, edits or deletes a schedule, room, event, announcement or assignment. Those are dashboard operations. A student asking the agent to delete a notice is refused because the capability genuinely is not there, not because a prompt talked it out of it.
+
+## Checking it works
+
+Two test scripts, neither of which needs an API key:
+
+```bash
+npm run smoke
+```
+
+Runs the service layer against a throwaway database — seed integrity, booking conflicts, half-open time windows, capacity, ownership refusals. Every assertion mirrors a query or an adversarial case from the brief.
+
+```bash
+npm run smoke:agent
+```
+
+Runs the tool layer the model calls — schema validity, tool dispatch, that checking a room writes nothing, that refusals come back as data rather than exceptions, and that the system prompt carries rules rather than a copy of the campus data.
 
 ---
 
