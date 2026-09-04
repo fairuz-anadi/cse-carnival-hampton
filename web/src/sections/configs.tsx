@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, UserPlus, X } from "lucide-react";
 import { bookRoom, cancelBooking, cancelRegistration, registerForEvent } from "../api/client";
@@ -275,6 +275,12 @@ function RoomActions({
     purpose: ""
   });
 
+  useEffect(() => {
+    if (!roomId && rooms.length > 0) {
+      setRoomId(rooms[0].id);
+    }
+  }, [roomId, rooms]);
+
   const createMutation = useMutation({
     mutationFn: () => bookRoom(roomId, values),
     onSuccess: () => {
@@ -296,30 +302,31 @@ function RoomActions({
   });
 
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-4">
+    <div className="rounded-lg border border-black/10 bg-white p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-950">Room booking</h3>
-          <p className="mt-1 text-xs text-slate-500">Bookings use the same room endpoint as the agent.</p>
+          <h3 className="text-sm font-semibold text-black">Room booking</h3>
+          <p className="mt-1 text-xs text-black/45">{rooms.reduce((total, room) => total + room.bookings.length, 0)} active bookings</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-sky-700 px-4 text-sm font-semibold text-white hover:bg-sky-800"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0075de] px-4 text-sm font-semibold text-white transition duration-200 hover:bg-[#0063bd] disabled:opacity-60"
+            disabled={rooms.length === 0}
             onClick={() => setOpen(true)}
           >
             <CalendarPlus className="h-4 w-4" aria-hidden="true" />
             Book
           </button>
           <input
-            className="h-10 rounded-md border border-slate-300 px-3 text-sm"
+            className="h-10 rounded-lg border border-black/10 bg-[#f6f5f4] px-3 text-sm outline-none focus:border-[#0075de] focus:bg-white"
             placeholder="bk-001"
             value={bookingId}
             onChange={(event) => setBookingId(event.target.value)}
           />
           <button
             type="button"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-rose-200 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#f64932]/25 px-4 text-sm font-semibold text-[#f64932] transition duration-200 hover:bg-[#fff1ef] disabled:opacity-60"
             disabled={!bookingId || cancelMutation.isPending}
             onClick={() => cancelMutation.mutate()}
           >
@@ -336,9 +343,9 @@ function RoomActions({
             createMutation.mutate();
           }}
         >
-          <label className="text-sm font-medium text-slate-700">
+          <label className="text-sm font-medium text-black/70">
             Room
-            <select className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 text-sm" value={roomId} onChange={(event) => setRoomId(event.target.value)}>
+            <select className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-[#f6f5f4] px-3 text-sm outline-none focus:border-[#0075de] focus:bg-white" value={roomId} onChange={(event) => setRoomId(event.target.value)}>
               {rooms.map((room) => (
                 <option key={room.id} value={room.id}>
                   {room.room_number}
@@ -347,10 +354,10 @@ function RoomActions({
             </select>
           </label>
           {(["booked_by", "date", "start_time", "end_time", "purpose"] as const).map((key) => (
-            <label key={key} className={`text-sm font-medium text-slate-700 ${key === "purpose" ? "sm:col-span-2" : ""}`}>
+            <label key={key} className={`text-sm font-medium text-black/70 ${key === "purpose" ? "sm:col-span-2" : ""}`}>
               {labelize(key)}
               <input
-                className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+                className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-[#f6f5f4] px-3 text-sm outline-none focus:border-[#0075de] focus:bg-white"
                 type={key === "date" ? "date" : key.includes("time") ? "time" : "text"}
                 value={values[key]}
                 required
@@ -359,10 +366,10 @@ function RoomActions({
             </label>
           ))}
           <div className="sm:col-span-2 flex justify-end gap-3">
-            <button type="button" className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium" onClick={() => setOpen(false)}>
+            <button type="button" className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium text-black/70 hover:bg-[#f6f5f4]" onClick={() => setOpen(false)}>
               Cancel
             </button>
-            <button type="submit" className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white" disabled={createMutation.isPending}>
+            <button type="submit" className="rounded-lg bg-[#0075de] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0063bd] disabled:opacity-60" disabled={createMutation.isPending}>
               Save booking
             </button>
           </div>
@@ -385,6 +392,12 @@ function EventActions({
   const [studentId, setStudentId] = useState(getUserId());
   const [name, setName] = useState("Sakibul Hassan");
 
+  useEffect(() => {
+    if (!eventId && events.length > 0) {
+      setEventId(events[0].id);
+    }
+  }, [eventId, events]);
+
   const registerMutation = useMutation({
     mutationFn: () => registerForEvent(eventId, { student_id: studentId, name }),
     onSuccess: () => {
@@ -404,11 +417,11 @@ function EventActions({
   });
 
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-4">
+    <div className="rounded-lg border border-black/10 bg-white p-4">
       <div className="grid gap-3 lg:grid-cols-[1.3fr_1fr_1fr_auto_auto] lg:items-end">
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-black/70">
           Event
-          <select className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 text-sm" value={eventId} onChange={(event) => setEventId(event.target.value)}>
+          <select className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-[#f6f5f4] px-3 text-sm outline-none focus:border-[#0075de] focus:bg-white" value={eventId} onChange={(event) => setEventId(event.target.value)}>
             {events.map((event) => (
               <option key={event.id} value={event.id}>
                 {event.name}
@@ -416,17 +429,17 @@ function EventActions({
             ))}
           </select>
         </label>
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-black/70">
           Student ID
-          <input className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 text-sm" value={studentId} onChange={(event) => setStudentId(event.target.value)} />
+          <input className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-[#f6f5f4] px-3 text-sm outline-none focus:border-[#0075de] focus:bg-white" value={studentId} onChange={(event) => setStudentId(event.target.value)} />
         </label>
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-black/70">
           Name
-          <input className="mt-1 h-10 w-full rounded-md border border-slate-300 px-3 text-sm" value={name} onChange={(event) => setName(event.target.value)} />
+          <input className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-[#f6f5f4] px-3 text-sm outline-none focus:border-[#0075de] focus:bg-white" value={name} onChange={(event) => setName(event.target.value)} />
         </label>
         <button
           type="button"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0075de] px-4 text-sm font-semibold text-white transition duration-200 hover:bg-[#0063bd] disabled:opacity-60"
           disabled={!eventId || !studentId || !name || registerMutation.isPending}
           onClick={() => registerMutation.mutate()}
         >
@@ -435,7 +448,7 @@ function EventActions({
         </button>
         <button
           type="button"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-rose-200 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#f64932]/25 px-4 text-sm font-semibold text-[#f64932] transition duration-200 hover:bg-[#fff1ef] disabled:opacity-60"
           disabled={!eventId || !studentId || cancelMutation.isPending}
           onClick={() => cancelMutation.mutate()}
         >
