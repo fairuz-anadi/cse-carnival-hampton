@@ -23,11 +23,19 @@ type CollectionMap = {
 export type CollectionItem<K extends CollectionName> = CollectionMap[K];
 
 export function getUserId() {
-  return localStorage.getItem(USER_KEY) ?? "20-40532";
+  try {
+    return localStorage.getItem(USER_KEY) ?? "20-40532";
+  } catch {
+    return "20-40532";
+  }
 }
 
 export function setUserId(userId: string) {
-  localStorage.setItem(USER_KEY, userId);
+  try {
+    localStorage.setItem(USER_KEY, userId);
+  } catch {
+    // Some privacy modes block storage; the request header still falls back safely.
+  }
 }
 
 function endpoint(path: string) {
@@ -119,4 +127,11 @@ export async function getHealth() {
   } catch {
     return { ok: false };
   }
+}
+
+export function askAgent(message: string) {
+  return request<{ message: string }>("/agent", {
+    method: "POST",
+    body: JSON.stringify({ message })
+  });
 }

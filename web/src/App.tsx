@@ -14,8 +14,9 @@ import {
   Settings,
   Users
 } from "lucide-react";
-import { getHealth, setUserId } from "./api/client";
+import { getHealth, getUserId, setUserId } from "./api/client";
 import { queryKeys } from "./api/queryKeys";
+import { AgentChat } from "./components/AgentChat";
 import { Pill } from "./components/Pill";
 import { Toasts, type ToastState } from "./components/Toast";
 import { CrudSection } from "./sections/CrudSection";
@@ -38,7 +39,7 @@ const nav: { key: CollectionName; label: string; icon: typeof CalendarDays }[] =
 
 export function App() {
   const [active, setActive] = useState<CollectionName>("schedules");
-  const [identity, setIdentity] = useState<Identity>(identities[0]);
+  const [identity, setIdentity] = useState<Identity>(() => identities.find((item) => item.id === getUserId()) ?? identities[0]);
   const [searchTerm, setSearchTerm] = useState("");
   const [toasts, setToasts] = useState<ToastState[]>([]);
   const health = useQuery({
@@ -90,7 +91,10 @@ export function App() {
                   className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition duration-200 ${
                     selected ? "bg-white text-black" : "text-white/60 hover:bg-white/10 hover:text-white"
                   }`}
-                  onClick={() => setActive(item.key)}
+                  onClick={() => {
+                    setActive(item.key);
+                    setSearchTerm("");
+                  }}
                   title={item.label}
                 >
                   <Icon className="h-5 w-5" aria-hidden="true" />
@@ -164,6 +168,8 @@ export function App() {
               <p className="text-xs font-semibold uppercase tracking-normal text-black/45">Today</p>
               <p className="mt-2 text-2xl font-semibold text-black">{today}</p>
             </div>
+
+            <AgentChat identity={identity} />
 
             <label className="block text-sm font-medium text-black/70">
               Identity

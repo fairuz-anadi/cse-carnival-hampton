@@ -124,7 +124,10 @@ export function CrudSection<K extends CollectionName>({ config, notify, searchTe
       {query.isLoading ? (
         <LoadingState />
       ) : query.isError ? (
-        <ErrorState message={query.error instanceof Error ? query.error.message : "Unable to load records"} />
+        <ErrorState
+          message={query.error instanceof Error ? query.error.message : "Unable to load records"}
+          onRetry={() => void query.refetch()}
+        />
       ) : rows.length === 0 ? (
         <EmptyState title={config.emptyTitle} />
       ) : filteredRows.length === 0 ? (
