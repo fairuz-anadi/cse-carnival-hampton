@@ -1,102 +1,111 @@
-# CampusOS — AI Build Hackathon
+# CampusOS
 
-An intelligent university platform powered by an AI agent that understands and acts on real-time campus data.
+**AI Build Hackathon — AUST CSE Carnival 8.0**
 
----
-
-## The Challenge
-
-Students struggle daily with scattered campus information — class changes buried in group chats, deadlines forgotten until the last minute, no easy way to know what's happening on campus right now.
-
-Your job: build **CampusOS** — a two-part app with a data dashboard and an AI agent that always reads live data.
-
-Read the full problem statement → [`PROBLEM_STATEMENT.md`](./PROBLEM_STATEMENT.md)
+A campus data manager and an AI agent sitting on top of the same live database. Edit a room's capacity or post an announcement in the dashboard, then ask the agent about it in the panel beside it — it already knows, because every tool call reads the database at the moment it runs.
 
 ---
 
-## Repository Structure
+## Project overview
 
-```
-campusos-hackathon/
-│
-├── README.md                    ← You are here
-├── PROBLEM_STATEMENT.md         ← Full problem statement + scoring
-├── SUBMISSION.md                ← How and where to submit
-│
-├── data/                        ← Seed data (load these into your backend)
-│   ├── schedules.json
-│   ├── rooms.json
-│   ├── events.json
-│   ├── announcements.json
-│   └── assignments.json
-│
-├── schema/
-│   └── schema.md                ← Field names, types, and constraints for all 5 systems
-│
-└── sample_queries/
-    └── sample_queries.md        ← Queries we will use when judging your agent
-```
+CampusOS holds five campus systems — class schedules, rooms, events, announcements and assignment deadlines — in a SQLite database seeded from the provided JSON files on first boot. The dashboard on the left lists all five and supports add, edit and delete on every one of them; changes are written to the database and appear in the interface immediately with no manual refresh. The agent on the right talks to a language model with **real function calling**: it has twelve tools that query and mutate that same database, and it decides which to call. Because those tools run SQL at call time and nothing is cached, a change made in the dashboard a second earlier is what the agent reads. Every answer shows the tool calls it made underneath it, so you can see exactly what it read and what it did.
 
----
+The agent also handles the awkward cases. It checks announcements against the timetable and tells you when a notice has moved a class. It refuses to book a room that already has a booking or a scheduled class in that window, and says what is in the way. When a request is too vague to act on — "just book me any room tomorrow afternoon" — it asks which room and which hours instead of guessing. And it declines to touch another student's registrations or bookings.
 
-## How to Participate
+## Tech stack
 
-### 1. Fork the repository
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 15 (App Router), React 19 |
+| Language | JavaScript |
+| Database | SQLite via `better-sqlite3` — file-based, zero setup, persists across restarts |
+| LLM | Google Gemini (`gemini-2.5-flash`) by default; OpenAI and Groq also supported |
+| Tool calling | Native function calling, called over the provider's REST API |
+| Styling | Hand-written CSS, no UI framework |
 
-Click **Fork** in the top-right corner of this repo's GitHub page. This creates your own copy under your GitHub account, where you'll build your solution.
+Four dependencies in total. There is no cloud database to provision and no account to create — clone, install, add one API key, run.
 
-### 2. Clone your fork
+## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/campusos-hackathon.git
-cd campusos-hackathon
+git clone https://github.com/fairuz-anadi/cse-carnival-hampton.git
+cd cse-carnival-hampton
+
+npm install
+
+cp .env.example .env       # Windows: copy .env.example .env
+# open .env and set GOOGLE_API_KEY
+
+npm run dev
 ```
 
-### 3. Build your solution inside your fork
+Open **http://localhost:3000**.
 
-> Your solution lives in your fork — do not open a pull request to this repo.
+The database file (`campusos.db`) is created and seeded from `data/*.json` the first time the app starts. To wipe it and reload the seed data at any point:
 
-### 4. Making your fork private
+```bash
+npm run seed
+```
 
-By default, a fork is public. If you want to keep your work hidden from other participants while you build:
+## Environment variables
 
-1. Go to your fork on GitHub
-2. Open **Settings** (top of the repo page)
-3. Scroll to the **Danger Zone** at the bottom
-4. Click **Change repository visibility** → **Make private**
-5. Confirm by typing the repository name
+| Key | Required | Notes |
+|---|---|---|
+| `GOOGLE_API_KEY` | yes* | Google AI Studio key — free at https://aistudio.google.com/apikey |
+| `OPENAI_API_KEY` | — | Alternative to the above; used if `GOOGLE_API_KEY` is absent |
+| `GROQ_API_KEY` | — | Second alternative |
+| `GEMINI_MODEL` | no | Defaults to `gemini-2.5-flash` |
+| `OPENAI_MODEL` | no | Defaults to `gpt-4o-mini` |
+| `GROQ_MODEL` | no | Defaults to `llama-3.3-70b-versatile` |
+| `DATABASE_PATH` | no | Defaults to `./campusos.db` |
 
-> **You may keep your fork private during the hackathon period, but it must be switched back to public by 8:30 PM on the submission deadline.** Repositories still private after that time will not be judged. To make it public again, repeat the steps above and choose **Make public** instead.
+\* Exactly one model key is required. The dashboard shows which provider is active in the top-right; with no key it says so instead of failing silently.
 
-### 5. Submit
+## Using the agent
 
-Submit your fork's public URL via the instructions in [`SUBMISSION.md`](./SUBMISSION.md).
+Type into the panel on the right. It is built for the way a student actually asks:
+
+- *When is my next class?*
+- *What classes do I have on Wednesday?*
+- *What have I got due this week?*
+- *Show me all high priority announcements.*
+- *I'm free until 2 PM — is there anything on campus I could drop into?*
+- *Which labs have a projector and can fit at least 30 people?*
+- *Book Room 7A02 tomorrow from 3 PM to 5 PM.*
+- *Register me for the Guest Lecture on Deep Learning.*
+- *I need a room for 5 people with a projector, tomorrow between 2 and 4.*
+
+**To see the live-data behaviour:** open the Announcements tab, edit any notice, then ask the agent about it. Or edit a room's capacity and ask which rooms fit that many people. The answer changes on the next message — there is no refresh, no reindex, no restart.
+
+Things it will not do: book a room that is occupied, register you twice for the same event, act on another student's records, or book anything when you have not said which room or when.
+
+## How it works
+
+```
+app/
+  page.js                     dashboard + chat shell
+  ui/                         Workspace, RecordTable, RecordForm, Chat (client components)
+  api/[resource]/             GET list, POST create
+  api/[resource]/[id]/        GET one, PATCH update, DELETE
+  api/actions/[action]/       book-room, cancel-booking, register-event, cancel-registration
+  api/chat/                   the agent loop
+lib/
+  db.js                       schema, connection, seeding
+  store.js                    reads and generic CRUD for all five systems
+  actions.js                  booking, registration, availability and conflict logic
+  agent-tools.js              the 12 tool definitions + the system prompt
+  llm.js                      function-calling loop (Gemini / OpenAI / Groq)
+data/                         the provided seed JSON, untouched
+```
+
+The five systems are normalised into seven tables — room bookings and event registrations are child tables with foreign keys rather than JSON blobs, which is what makes overlap checks and seat counts correct rather than approximate. Event registration counts are computed from the registrations table on every read, so they can never drift from the underlying rows.
+
+## Agent tools
+
+`get_class_schedule` · `get_next_class` · `get_assignments` · `get_announcements` · `get_events` · `get_rooms` · `find_available_rooms` · `book_room` · `cancel_room_booking` · `register_for_event` · `cancel_event_registration` · `whats_on`
+
+`find_available_rooms` is the one worth calling out: it excludes a room if it has an overlapping booking **or** a timetabled class in that window, so "free" means actually free.
 
 ---
 
-## Quick Links
-
-| Resource | Link |
-|----------|------|
-| Full problem statement | [`PROBLEM_STATEMENT.md`](./PROBLEM_STATEMENT.md) |
-| Data schema | [`schema/schema.md`](./schema/schema.md) |
-| Sample agent queries | [`sample_queries/sample_queries.md`](./sample_queries/sample_queries.md) |
-| Submission guide | [`SUBMISSION.md`](./SUBMISSION.md) |
-
----
-
-## Seed Data Overview
-
-| File | Records | What It Contains |
-|------|---------|-----------------|
-| `schedules.json` | 24 | Class timetable — course, day, time, room, instructor |
-| `rooms.json` | 20 | Rooms 7A01–7A07, 7B01–7B08, 7C01–7C05 with equipment and bookings |
-| `events.json` | 7 | Campus events with registration lists |
-| `announcements.json` | 8 | Notices with priority levels and expiry dates |
-| `assignments.json` | 8 | Course assignments with deadlines and submission status |
-
-> **Important:** These JSON files are only the starting/seed data — not the database itself. Load them into a real backend (a database, or at minimum a backend service with persistent storage) on app startup. Your dashboard and AI agent must both read from and write to that backend, not the static JSON files directly. If you add, edit, or delete a record, the change must be saved in your backend and still be there after a reload — the JSON files in this repo will not update. The agent is also expected to always query the current backend state, not a cached or hardcoded copy of the seed data.
-
----
-
-Good luck. Build something that actually works.
+Built for the AI Build Hackathon, AUST CSE Carnival 8.0.
