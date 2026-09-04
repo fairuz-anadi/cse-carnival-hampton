@@ -119,11 +119,12 @@ Open **http://localhost:3000**.
 
 ### Which key to use
 
-Any one of Groq, OpenAI or Google works. If you are picking one now, use **Groq** — it is free and its limits are generous.
+Any one of Groq, OpenAI or Google works. This project uses **OpenAI**:
 
 ```
-LLM_PROVIDER=groq
-GROQ_API_KEY=your_key_here
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-proj-your_key_here
+OPENAI_MODEL=gpt-4o-mini
 ```
 
 See the **Environment variables** section below for all options.
@@ -134,13 +135,13 @@ See the **Environment variables** section below for all options.
 
 | Key | Required | Notes |
 |---|---|---|
-| `LLM_PROVIDER` | no | `groq`, `openai` or `gemini`. Set it when more than one key is present, otherwise the first key found wins |
-| `GROQ_API_KEY` | yes* | Free and generous — https://console.groq.com/keys. The recommended choice |
-| `OPENAI_API_KEY` | yes* | Paid — https://platform.openai.com/api-keys |
+| `LLM_PROVIDER` | no | `openai` (default), `groq`, or `gemini`. Set it when more than one key is present, otherwise the first key found wins |
+| `OPENAI_API_KEY` | yes* | Required for OpenAI — https://platform.openai.com/api-keys |
+| `OPENAI_MODEL` | no | Defaults to `gpt-4o-mini` |
+| `GROQ_API_KEY` | yes* | Free and generous — https://console.groq.com/keys |
+| `GROQ_MODEL` | no | Defaults to `llama-3.3-70b-versatile` |
 | `GOOGLE_API_KEY` | yes* | Free at https://aistudio.google.com/apikey, but capped at 20 requests/day |
 | `GEMINI_MODEL` | no | Defaults to `gemini-3.6-flash` |
-| `OPENAI_MODEL` | no | Defaults to `gpt-4o-mini` |
-| `GROQ_MODEL` | no | Defaults to `llama-3.3-70b-versatile` |
 | `DATABASE_PATH` | no | Defaults to `./campusos.db` |
 
 \* Exactly one model key is required — any one of the three.
