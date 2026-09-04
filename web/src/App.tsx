@@ -1,6 +1,19 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, CalendarDays, CheckCircle2, CircleAlert, ClipboardList, Megaphone, School, Users } from "lucide-react";
+import {
+  Bell,
+  Bot,
+  CalendarDays,
+  CheckCircle2,
+  CircleAlert,
+  ClipboardList,
+  LogOut,
+  Megaphone,
+  Search,
+  School,
+  Settings,
+  Users
+} from "lucide-react";
 import { getHealth, setUserId } from "./api/client";
 import { queryKeys } from "./api/queryKeys";
 import { Pill } from "./components/Pill";
@@ -26,6 +39,7 @@ const nav: { key: CollectionName; label: string; icon: typeof CalendarDays }[] =
 export function App() {
   const [active, setActive] = useState<CollectionName>("schedules");
   const [identity, setIdentity] = useState<Identity>(identities[0]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [toasts, setToasts] = useState<ToastState[]>([]);
   const health = useQuery({
     queryKey: queryKeys.health,
@@ -58,33 +72,103 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-950">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-slate-950 text-white">
-              <School className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-normal">CampusOS</h1>
-              <p className="text-sm text-slate-500">{today}</p>
-            </div>
+    <div className="min-h-screen bg-[#f6f5f4] p-3 text-black sm:p-6">
+      <div className="mx-auto grid min-h-[calc(100vh-24px)] max-w-[1440px] overflow-hidden rounded-[28px] border border-black/10 bg-white lg:min-h-[calc(100vh-48px)] lg:grid-cols-[84px_minmax(0,1fr)_340px]">
+        <nav className="flex items-center gap-2 bg-[#050505] p-3 text-white lg:flex-col lg:py-6">
+          <div className="mb-0 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-black lg:mb-8" title="CampusOS">
+            <School className="h-5 w-5" aria-hidden="true" />
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-              {health.data?.ok ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-              ) : (
-                <CircleAlert className="h-4 w-4 text-rose-600" aria-hidden="true" />
-              )}
-              <span className={health.data?.ok ? "text-emerald-700" : "text-rose-700"}>{health.data?.ok ? "API online" : "API offline"}</span>
+          <div className="flex flex-1 gap-2 overflow-x-auto lg:w-full lg:flex-col lg:items-center lg:overflow-visible">
+            {nav.map((item) => {
+              const Icon = item.icon;
+              const selected = active === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition duration-200 ${
+                    selected ? "bg-white text-black" : "text-white/60 hover:bg-white/10 hover:text-white"
+                  }`}
+                  onClick={() => setActive(item.key)}
+                  title={item.label}
+                >
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="hidden gap-2 lg:flex lg:flex-col">
+            <button className="flex h-11 w-11 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white" type="button" title="Settings">
+              <Settings className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <button className="flex h-11 w-11 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white" type="button" title="Sign out">
+              <LogOut className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+        </nav>
+
+        <div className="min-w-0 bg-[#f6f5f4]">
+          <header className="border-b border-black/10 bg-white px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-normal text-black/45">Campus operations</p>
+                <h1 className="mt-1 text-3xl font-semibold tracking-normal text-black">Good day, {identity.name.split(" ")[0]}</h1>
+              </div>
+
+              <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                <label className="relative min-w-0 md:w-[320px]">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" aria-hidden="true" />
+                  <span className="sr-only">Search dashboard</span>
+                  <input
+                    className="h-11 w-full rounded-lg border border-black/10 bg-[#f6f5f4] pl-10 pr-3 text-sm text-black outline-none transition duration-200 placeholder:text-black/35 focus:border-[#0075de]"
+                    placeholder={`Search ${activeConfig.title.toLowerCase()}`}
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                  />
+                </label>
+
+                <div className="inline-flex h-11 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 text-sm">
+                  {health.data?.ok ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                  ) : (
+                    <CircleAlert className="h-4 w-4 text-[#f64932]" aria-hidden="true" />
+                  )}
+                  <span className={health.data?.ok ? "text-emerald-700" : "text-[#f64932]"}>{health.data?.ok ? "API online" : "API offline"}</span>
+                </div>
+
+                <button className="hidden h-11 w-11 items-center justify-center rounded-lg border border-black/10 bg-white text-black/70 md:flex" type="button" title="Notifications">
+                  <Bell className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="min-w-0 px-4 py-5 sm:px-6">
+            <CrudSection config={activeConfig} notify={notify} searchTerm={searchTerm} />
+          </main>
+        </div>
+
+        <aside className="border-l border-black/10 bg-white p-5">
+          <div className="flex h-full flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-[#0075de]" aria-hidden="true" />
+                <h2 className="text-base font-semibold text-black">Campus agent</h2>
+              </div>
+              <Pill tone={identity.role === "admin" ? "violet" : "blue"}>{identity.role}</Pill>
             </div>
 
-            <label className="text-sm font-medium text-slate-700">
-              <span className="sr-only">Identity</span>
+            <div className="rounded-lg border border-black/10 bg-[#e6f3fe] p-4">
+              <p className="text-xs font-semibold uppercase tracking-normal text-black/45">Today</p>
+              <p className="mt-2 text-2xl font-semibold text-black">{today}</p>
+            </div>
+
+            <label className="block text-sm font-medium text-black/70">
+              Identity
               <select
-                className="h-10 min-w-[220px] rounded-md border border-slate-300 bg-white px-3 text-sm"
+                className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-[#f6f5f4] px-3 text-sm text-black outline-none focus:border-[#0075de]"
                 value={identity.id}
                 onChange={(event) => changeIdentity(event.target.value)}
               >
@@ -95,59 +179,22 @@ export function App() {
                 ))}
               </select>
             </label>
-          </div>
-        </div>
-      </header>
 
-      <div className="mx-auto grid max-w-[1600px] gap-4 px-4 py-4 lg:grid-cols-[220px_minmax(0,1fr)_360px] lg:px-6">
-        <nav className="rounded-md border border-slate-200 bg-white p-2 shadow-panel lg:sticky lg:top-4 lg:h-[calc(100vh-112px)]">
-          <div className="grid grid-cols-2 gap-1 lg:grid-cols-1">
-            {nav.map((item) => {
-              const Icon = item.icon;
-              const selected = active === item.key;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={`flex h-11 items-center gap-2 rounded-md px-3 text-left text-sm font-medium ${
-                    selected ? "bg-slate-950 text-white" : "text-slate-700 hover:bg-slate-100"
-                  }`}
-                  onClick={() => setActive(item.key)}
-                >
-                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
-        <main className="min-w-0 rounded-md border border-slate-200 bg-white/65 p-4 shadow-panel">
-          <CrudSection config={activeConfig} notify={notify} />
-        </main>
-
-        <aside className="rounded-md border border-slate-200 bg-white p-4 shadow-panel lg:sticky lg:top-4 lg:h-[calc(100vh-112px)]">
-          <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <div className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-sky-700" aria-hidden="true" />
-                <h2 className="text-base font-semibold">Campus agent</h2>
+            <div className="grid gap-3">
+              <div className="rounded-lg border border-black/10 bg-white p-4">
+                <p className="text-xs font-medium text-black/45">Active section</p>
+                <p className="mt-2 text-xl font-semibold text-black">{activeConfig.title}</p>
               </div>
-              <Pill tone={identity.role === "admin" ? "violet" : "blue"}>{identity.role}</Pill>
-            </div>
-            <div className="flex flex-1 items-center justify-center text-center">
-              <div className="max-w-[240px]">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-sky-50 text-sky-700">
-                  <Bot className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <p className="mt-3 text-sm font-medium text-slate-800">Agent panel</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Chat messages and tool traces fit here beside the dashboard.</p>
+              <div className="rounded-lg bg-[#02093a] p-4 text-white">
+                <p className="text-xs font-medium text-white/55">Session</p>
+                <p className="mt-2 text-lg font-semibold">{identity.id}</p>
               </div>
             </div>
-            <div className="border-t border-slate-200 pt-4 text-xs text-slate-500">
+
+            <div className="mt-auto border-t border-black/10 pt-4 text-xs text-black/45">
               <div className="flex items-center justify-between">
                 <span>{identity.name}</span>
-                <span>{identity.id}</span>
+                <span>CampusOS</span>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { createItem, deleteItem, listCollection, updateItem, type CollectionItem } from "../api/client";
 import { queryKeys } from "../api/queryKeys";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -25,9 +25,10 @@ export type SectionConfig<K extends CollectionName> = {
 type Props<K extends CollectionName> = {
   config: SectionConfig<K>;
   notify: (tone: "success" | "error", message: string) => void;
+  searchTerm: string;
 };
 
-export function CrudSection<K extends CollectionName>({ config, notify }: Props<K>) {
+export function CrudSection<K extends CollectionName>({ config, notify, searchTerm }: Props<K>) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<CollectionItem<K> | null>(null);
   const [deleting, setDeleting] = useState<CollectionItem<K> | null>(null);
@@ -43,6 +44,15 @@ export function CrudSection<K extends CollectionName>({ config, notify }: Props<
     const data = query.data ?? [];
     return config.sortRows ? config.sortRows(data) : data;
   }, [config, query.data]);
+
+  const filteredRows = useMemo(() => {
+    const normalized = searchTerm.trim().toLowerCase();
+    if (!normalized) {
+      return rows;
+    }
+
+    return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(normalized));
+  }, [rows, searchTerm]);
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys[config.name] });
@@ -93,15 +103,15 @@ export function CrudSection<K extends CollectionName>({ config, notify }: Props<
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+    <section className="space-y-5">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-normal text-sky-700">{config.eyebrow}</p>
-          <h2 className="mt-1 text-2xl font-semibold text-slate-950">{config.title}</h2>
+          <p className="text-xs font-semibold uppercase tracking-normal text-black/45">{config.eyebrow}</p>
+          <h2 className="mt-1 text-[40px] font-semibold leading-tight tracking-normal text-black">{config.title}</h2>
         </div>
         <button
           type="button"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0075de] px-5 text-sm font-semibold text-white transition duration-200 hover:bg-[#0063bd]"
           onClick={openCreate}
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
@@ -109,14 +119,21 @@ export function CrudSection<K extends CollectionName>({ config, notify }: Props<
         </button>
       </div>
 
+      <SummaryCards name={config.name} rows={rows} />
+
       {query.isLoading ? (
         <LoadingState />
       ) : query.isError ? (
         <ErrorState message={query.error instanceof Error ? query.error.message : "Unable to load records"} />
       ) : rows.length === 0 ? (
         <EmptyState title={config.emptyTitle} />
+      ) : filteredRows.length === 0 ? (
+        <div className="flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-lg border border-black/10 bg-white text-center text-black/60">
+          <Search className="h-5 w-5" aria-hidden="true" />
+          <p className="text-sm font-medium">No matches</p>
+        </div>
       ) : (
-        <DataTable rows={rows} columns={config.columns} onEdit={openEdit} onDelete={setDeleting} />
+        <DataTable rows={filteredRows} columns={config.columns} onEdit={openEdit} onDelete={setDeleting} />
       )}
 
       {config.extraPanel?.(rows, invalidate)}
@@ -143,6 +160,75 @@ export function CrudSection<K extends CollectionName>({ config, notify }: Props<
       />
     </section>
   );
+}
+
+function SummaryCards<K extends CollectionName>({ name, rows }: { name: K; rows: CollectionItem<K>[] }) {
+  const summaries = buildSummaries(name, rows);
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {summaries.map((summary) => (
+        <div key={summary.label} className={`min-h-[112px] rounded-lg p-4 ${summary.className}`}>
+          <p className="text-xs font-semibold uppercase tracking-normal opacity-60">{summary.label}</p>
+          <p className="mt-3 text-3xl font-semibold leading-none tracking-normal">{summary.value}</p>
+          <p className="mt-3 text-sm leading-5 opacity-70">{summary.detail}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function buildSummaries<K extends CollectionName>(name: K, rows: CollectionItem<K>[]) {
+  if (name === "schedules") {
+    const typed = rows as CollectionItem<"schedules">[];
+    return [
+      card("Records", typed.length, "classes in view", "border border-black/10 bg-white text-black"),
+      card("Days", new Set(typed.map((row) => row.day)).size, "teaching days covered", "bg-[#ffb110] text-black"),
+      card("Rooms", new Set(typed.map((row) => row.room)).size, "unique room labels", "bg-[#02093a] text-white")
+    ];
+  }
+
+  if (name === "rooms") {
+    const typed = rows as CollectionItem<"rooms">[];
+    return [
+      card("Rooms", typed.length, "directory entries", "border border-black/10 bg-white text-black"),
+      card("Labs", typed.filter((row) => row.type === "lab").length, "computer lab spaces", "bg-[#62aef0] text-black"),
+      card("Bookings", typed.reduce((total, row) => total + row.bookings.length, 0), "visible reservations", "bg-[#02093a] text-white")
+    ];
+  }
+
+  if (name === "events") {
+    const typed = rows as CollectionItem<"events">[];
+    return [
+      card("Events", typed.length, "campus programs", "border border-black/10 bg-white text-black"),
+      card("Full", typed.filter((row) => row.status === "full").length, "capacity alerts", "bg-[#f64932] text-white"),
+      card("Seats", typed.reduce((total, row) => total + row.registered, 0), "registered count", "bg-[#e6f3fe] text-black")
+    ];
+  }
+
+  if (name === "announcements") {
+    const typed = rows as CollectionItem<"announcements">[];
+    return [
+      card("Notices", typed.length, "published items", "border border-black/10 bg-white text-black"),
+      card("High", typed.filter((row) => row.priority === "high").length, "priority updates", "bg-[#f64932] text-white"),
+      card("Active", typed.filter((row) => row.expires >= todayIso()).length, "not expired", "bg-[#ffb110] text-black")
+    ];
+  }
+
+  const typed = rows as CollectionItem<"assignments">[];
+  return [
+    card("Assignments", typed.length, "course tasks", "border border-black/10 bg-white text-black"),
+    card("Pending", typed.filter((row) => row.status === "pending").length, "still open", "bg-[#ffb110] text-black"),
+    card("Marks", typed.reduce((total, row) => total + row.marks, 0), "total available", "bg-[#02093a] text-white")
+  ];
+}
+
+function card(label: string, value: number | string, detail: string, className: string) {
+  return { label, value, detail, className };
+}
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function buildInitialValues(fields: FieldConfig[], source: Record<string, unknown> | null) {
