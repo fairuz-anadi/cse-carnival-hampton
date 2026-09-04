@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SECTIONS } from './config';
+import { Inbox, Search } from './icons';
 
 function Cell({ col, row }) {
   const main = col.value ? col.value(row) : row[col.key];
@@ -14,12 +15,24 @@ function Cell({ col, row }) {
   );
 }
 
-export default function RecordTable({ resource, rows, onEdit, onDelete, busyId }) {
+export default function RecordTable({ resource, rows, onEdit, onDelete, busyId, extraActions, query }) {
   const cfg = SECTIONS[resource];
   const [confirming, setConfirming] = useState(null);
 
   if (!rows.length) {
-    return <div className="table-wrap"><div className="empty">Nothing here yet. Add the first {cfg.singular}.</div></div>;
+    return (
+      <div className="table-wrap">
+        <div className="empty">
+          {query ? <Search size={22} /> : <Inbox size={22} />}
+          <span className="empty-title">
+            {query ? `Nothing matches “${query}”` : `No ${cfg.label.toLowerCase()} yet`}
+          </span>
+          <span>
+            {query ? 'Try a different search term.' : `Add the first ${cfg.singular} to get started.`}
+          </span>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -44,6 +57,11 @@ export default function RecordTable({ resource, rows, onEdit, onDelete, busyId }
                   </>
                 ) : (
                   <>
+                    {(extraActions?.(row) || []).map((a) => (
+                      <button key={a.label} className={`btn ghost ${a.kind || 'act'}`}
+                        disabled={a.disabled || busyId === row.id} title={a.title}
+                        onClick={a.onClick}>{a.label}</button>
+                    ))}
                     <button className="btn ghost" onClick={() => onEdit(row)}>Edit</button>
                     <button className="btn ghost danger" onClick={() => setConfirming(row.id)}>Delete</button>
                   </>

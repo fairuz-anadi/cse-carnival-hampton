@@ -1,21 +1,41 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SECTIONS, ORDER } from './config';
 import RecordTable from './RecordTable';
 import RecordForm from './RecordForm';
+import BookingPanel from './BookingPanel';
+import Overview from './Overview';
 import Chat from './Chat';
+import {
+  LayoutDashboard, CalendarDays, DoorOpen, Ticket, Megaphone, ClipboardCheck,
+  Search, Bell, Plus, RefreshCw, GraduationCap, Sparkles, Inbox,
+} from './icons';
 
 const EMPTY = { schedules: [], rooms: [], events: [], announcements: [], assignments: [] };
+
+const NAV = [
+  { key: 'overview', label: 'Dashboard', icon: LayoutDashboard, group: null },
+  { key: 'schedules', label: 'Schedule', icon: CalendarDays, group: 'Academics' },
+  { key: 'assignments', label: 'Assignments', icon: ClipboardCheck, group: null },
+  { key: 'rooms', label: 'Rooms', icon: DoorOpen, group: 'Campus' },
+  { key: 'events', label: 'Events', icon: Ticket, group: null },
+  { key: 'announcements', label: 'Notices', icon: Megaphone, group: null },
+];
+
+const MOBILE_NAV = ['overview', 'schedules', 'assignments', 'rooms', 'events'];
 
 export default function Workspace() {
   const [data, setData] = useState(EMPTY);
   const [meta, setMeta] = useState(null);
-  const [tab, setTab] = useState('schedules');
-  const [editing, setEditing] = useState(null); // null | 'new' | record
+  const [view, setView] = useState('overview');
+  const [editing, setEditing] = useState(null);
+  const [booking, setBooking] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [query, setQuery] = useState('');
 
   const loadResource = useCallback(async (resource) => {
     const res = await fetch(`/api/${resource}`, { cache: 'no-store' });
@@ -39,26 +59,40 @@ export default function Workspace() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const announce = useCallback(async (message) => {
+    await loadAll();
+    setToast(message);
+  }, [loadAll]);
+
+  const isSection = view !== 'overview';
+  const cfg = isSection ? SECTIONS[view] : null;
+
   async function save(payload) {
     const isNew = editing === 'new';
-    const url = isNew ? `/api/${tab}` : `/api/${tab}/${editing.id}`;
-    const res = await fetch(url, {
+    const res = await fetch(isNew ? `/api/${view}` : `/api/${view}/${editing.id}`, {
       method: isNew ? 'POST' : 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error((await res.json()).error || 'Save failed');
     setEditing(null);
-    await loadResource(tab);
-    if (tab === 'events' || tab === 'rooms') await loadResource(tab);
+    await loadAll();
+    setToast(isNew ? `${cfg.singular} added.` : 'Changes saved.');
   }
 
   async function remove(row) {
     setBusyId(row.id);
     try {
-      const res = await fetch(`/api/${tab}/${row.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/${view}/${row.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error || 'Delete failed');
-      await loadResource(tab);
+      await loadAll();
+      setToast(`${cfg.singular} deleted.`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -66,77 +100,201 @@ export default function Workspace() {
     }
   }
 
-  const cfg = SECTIONS[tab];
-  const rows = data[tab] || [];
+  async function eventAction(action, row) {
+    setBusyId(row.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/actions/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: row.id }),
+      });
+      const body = await res.json();
+      if (body.ok) await announce(body.message);
+      else setError(body.message || 'That did not work.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const myId = meta?.profile?.student_id;
+  const isRegistered = (row) => !!myId && (row.registrations || []).some((r) => r.student_id === myId);
+
+  function extraActions(row) {
+    if (view === 'rooms') {
+      return [{ label: 'Book', kind: 'act', onClick: () => { setEditing(null); setBooking(row); } }];
+    }
+    if (view === 'events') {
+      if (isRegistered(row)) {
+        return [{ label: 'Cancel place', kind: 'danger', onClick: () => eventAction('cancel-registration', row) }];
+      }
+      const full = row.seats_left <= 0;
+      return [{
+        label: full ? 'Full' : 'Register',
+        kind: 'act',
+        disabled: full || row.status === 'cancelled' || row.status === 'completed',
+        title: full ? `${row.registered}/${row.capacity} places taken` : undefined,
+        onClick: () => eventAction('register-event', row),
+      }];
+    }
+    return [];
+  }
+
+  /** Header search filters the rows of whichever section is open. */
+  const rows = useMemo(() => {
+    const all = isSection ? (data[view] || []) : [];
+    const q = query.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter((r) => JSON.stringify(r).toLowerCase().includes(q));
+  }, [data, view, query, isSection]);
+
+  function go(key) {
+    setView(key);
+    setEditing(null);
+    setBooking(null);
+    setQuery('');
+  }
+
+  const initials = (meta?.profile?.name || 'CO').split(' ').map((w) => w[0]).slice(0, 2).join('');
 
   return (
-    <div className="shell">
-      <header className="masthead">
-        <h1 className="wordmark">Campus<em>OS</em></h1>
-        <span className="tag">AUST · Live campus data + agent</span>
-        <span className="spacer" />
-        {meta ? (
-          <>
-            <span className="chip">{meta.profile.name} · {meta.profile.student_id}</span>
-            <span className="chip">{meta.today}</span>
-            <span className={meta.provider ? 'chip live' : 'chip warn'}>
-              {meta.provider ? `agent: ${meta.provider}` : 'agent: no API key'}
-            </span>
-          </>
-        ) : null}
-      </header>
+    <div className="app">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="mark"><GraduationCap size={15} /></span>
+          CampusOS
+        </div>
 
-      <div className="body">
-        <main className="dash">
-          <nav className="tabs" role="tablist">
-            {ORDER.map((key) => (
-              <button
-                key={key}
-                role="tab"
-                className="tab"
-                aria-selected={tab === key}
-                onClick={() => { setTab(key); setEditing(null); }}
-              >
-                {SECTIONS[key].label}
-                <span className="count">{(data[key] || []).length}</span>
-              </button>
-            ))}
-          </nav>
+        {NAV.map((item) => (
+          <div key={item.key}>
+            {item.group ? <div className="nav-group">{item.group}</div> : null}
+            <button
+              className="nav-item"
+              aria-current={view === item.key ? 'page' : undefined}
+              onClick={() => go(item.key)}
+            >
+              <item.icon size={17} />
+              {item.label}
+              {item.key !== 'overview' ? (
+                <span className="count">{(data[item.key] || []).length}</span>
+              ) : null}
+            </button>
+          </div>
+        ))}
 
-          <section className="pane">
-            <div className="pane-head">
-              <div>
-                <h2>{cfg.label}</h2>
-                <p>{cfg.blurb}</p>
-              </div>
-              <span className="spacer" />
-              <button className="btn primary" onClick={() => setEditing('new')}>+ Add {cfg.singular}</button>
-              <button className="btn" onClick={loadAll}>Refresh</button>
+        <div className="sidebar-foot">
+          <div className="who-card">
+            <span className="avatar">{initials}</span>
+            <div style={{ minWidth: 0 }}>
+              <div className="who-name">{meta?.profile?.name || 'Loading…'}</div>
+              <div className="who-sub">{meta?.profile?.student_id || ''}</div>
             </div>
+          </div>
+        </div>
+      </aside>
 
-            {error ? <div className="notice" style={{ margin: '0 0 16px' }}>{error}</div> : null}
+      <div className="main">
+        <header className="header">
+          <h1>{isSection ? cfg.label : 'Dashboard'}</h1>
+          <span className="spacer" />
+          <div className="search">
+            <Search size={15} />
+            <input
+              value={query}
+              placeholder={isSection ? `Search ${cfg.label.toLowerCase()}…` : 'Search CampusOS…'}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => { if (!isSection) go('schedules'); }}
+              aria-label="Search"
+            />
+          </div>
+          <button className="icon-btn" title="Notices" aria-label="Notices" onClick={() => go('announcements')}>
+            <Bell size={16} />
+          </button>
+          <span className="status-chip" title={meta?.provider ? `Agent using ${meta.provider}` : 'No LLM key set'}>
+            <span className={`dot${meta?.provider ? '' : ' off'}`} />
+            {meta?.provider ? meta.provider : 'no key'}
+          </span>
+          <span className="status-chip">{meta?.today || '—'}</span>
+        </header>
 
-            {editing ? (
-              <RecordForm
-                key={editing === 'new' ? `new-${tab}` : editing.id}
-                resource={tab}
-                initial={editing === 'new' ? null : editing}
-                onCancel={() => setEditing(null)}
-                onSubmit={save}
-              />
-            ) : null}
+        <div className={`content${isSection ? '' : ''}`}>
+          <div className="col">
+            {error ? <div className="notice">{error}</div> : null}
 
-            {loaded ? (
-              <RecordTable resource={tab} rows={rows} busyId={busyId}
-                onEdit={(row) => setEditing(row)} onDelete={remove} />
+            {!isSection ? (
+              loaded ? (
+                <Overview data={data} meta={meta} onGo={go} />
+              ) : (
+                <div className="card"><div className="skel skel-row" style={{ width: '40%' }} /><div className="skel skel-row" /><div className="skel skel-row" style={{ width: '70%' }} /></div>
+              )
             ) : (
-              <div className="table-wrap"><div className="empty">Loading campus data…</div></div>
-            )}
-          </section>
-        </main>
+              <>
+                <div className="pane-head">
+                  <div>
+                    <h2>{cfg.label}</h2>
+                    <p>{cfg.blurb}</p>
+                  </div>
+                  <span className="spacer" />
+                  <button className="btn primary" onClick={() => { setBooking(null); setEditing('new'); }}>
+                    <Plus size={15} /> Add {cfg.singular}
+                  </button>
+                  <button className="btn" onClick={loadAll} title="Reload from the database">
+                    <RefreshCw size={15} /> Refresh
+                  </button>
+                </div>
 
-        <Chat provider={meta?.provider} onDataChanged={loadAll} />
+                {editing ? (
+                  <RecordForm
+                    key={editing === 'new' ? `new-${view}` : editing.id}
+                    resource={view}
+                    initial={editing === 'new' ? null : editing}
+                    onCancel={() => setEditing(null)}
+                    onSubmit={save}
+                  />
+                ) : null}
+
+                {booking ? (
+                  <BookingPanel
+                    key={booking.id}
+                    room={data.rooms.find((r) => r.id === booking.id) || booking}
+                    today={meta?.today}
+                    onClose={() => setBooking(null)}
+                    onDone={announce}
+                  />
+                ) : null}
+
+                {loaded ? (
+                  <RecordTable resource={view} rows={rows} busyId={busyId}
+                    onEdit={(row) => { setBooking(null); setEditing(row); }}
+                    onDelete={remove} extraActions={extraActions} query={query} />
+                ) : (
+                  <div className="table-wrap">
+                    {[0, 1, 2, 3, 4].map((i) => <div key={i} className="skel skel-row" style={{ width: `${90 - i * 9}%` }} />)}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <Chat provider={meta?.provider} onDataChanged={loadAll} />
+        </div>
       </div>
+
+      <nav className="tabbar" aria-label="Sections">
+        {MOBILE_NAV.map((key) => {
+          const item = NAV.find((n) => n.key === key);
+          return (
+            <button key={key} aria-current={view === key ? 'page' : undefined} onClick={() => go(key)}>
+              <item.icon size={18} />
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {toast ? <div className="toast" role="status">{toast}</div> : null}
     </div>
   );
 }

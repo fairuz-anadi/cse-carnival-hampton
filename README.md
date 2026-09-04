@@ -25,62 +25,7 @@ The agent also handles the awkward cases. It checks announcements against the ti
 
 Four dependencies in total. There is no cloud database to provision and no account to create — clone, install, add one API key, run.
 
-<<<<<<< Updated upstream
 ## Setup
-=======
-```
-campusos-hackathon/
-│
-├── README.md                    ← You are here
-├── PROBLEM_STATEMENT.md         ← Full problem statement + scoring
-├── SUBMISSION.md                ← How and where to submit
-│
-├── data/                        ← Seed data (load these into your backend)
-│   ├── schedules.json
-│   ├── rooms.json
-│   ├── events.json
-│   ├── announcements.json
-│   └── assignments.json
-│
-├── schema/
-│   └── schema.md                ← Field names, types, and constraints for all 5 systems
-│
-└── sample_queries/
-    └── sample_queries.md        ← Queries we will use when judging your agent
-```
-
----
-
-## Run Locally
-
-```bash
-cd web
-npm install
-npm run dev
-```
-
-Open the local URL printed by Vite, usually `http://localhost:5173`. If that port is already in use, Vite will print the next available URL, such as `http://127.0.0.1:5174`. The Vite dev server includes the local `/api` backend, seeds from `data/*.json`, and persists dashboard/agent changes in `.campusos-db/campusos.json`.
-
-For a production-style run:
-
-```bash
-cd web
-npm run build
-npm start
-```
-
-Open `http://localhost:3000`.
-
----
-
-## How to Participate
-
-### 1. Fork the repository
-
-Click **Fork** in the top-right corner of this repo's GitHub page. This creates your own copy under your GitHub account, where you'll build your solution.
-
-### 2. Clone your fork
->>>>>>> Stashed changes
 
 ```bash
 git clone https://github.com/fairuz-anadi/cse-carnival-hampton.git
@@ -89,12 +34,19 @@ cd cse-carnival-hampton
 npm install
 
 cp .env.example .env       # Windows: copy .env.example .env
-# open .env and set GOOGLE_API_KEY
+# open .env and set ONE model key (see below)
 
 npm run dev
 ```
 
 Open **http://localhost:3000**.
+
+**Which key to use.** Any one of Groq, OpenAI or Google works. If you are picking one now, use **Groq** — it is free and its limits are generous. Google's free tier allows only **20 requests per day**, and one agent question costs 2–4 requests, so a fresh Google key runs dry after roughly six questions.
+
+```
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_key_here
+```
 
 The database file (`campusos.db`) is created and seeded from `data/*.json` the first time the app starts. To wipe it and reload the seed data at any point:
 
@@ -106,15 +58,27 @@ npm run seed
 
 | Key | Required | Notes |
 |---|---|---|
-| `GOOGLE_API_KEY` | yes* | Google AI Studio key — free at https://aistudio.google.com/apikey |
-| `OPENAI_API_KEY` | — | Alternative to the above; used if `GOOGLE_API_KEY` is absent |
-| `GROQ_API_KEY` | — | Second alternative |
+| `LLM_PROVIDER` | no | `groq`, `openai` or `gemini`. Set it when more than one key is present, otherwise the first key found wins |
+| `GROQ_API_KEY` | yes* | Free and generous — https://console.groq.com/keys. The recommended choice |
+| `OPENAI_API_KEY` | yes* | Paid — https://platform.openai.com/api-keys |
+| `GOOGLE_API_KEY` | yes* | Free at https://aistudio.google.com/apikey, but capped at 20 requests/day |
 | `GEMINI_MODEL` | no | Defaults to `gemini-3.6-flash` |
 | `OPENAI_MODEL` | no | Defaults to `gpt-4o-mini` |
 | `GROQ_MODEL` | no | Defaults to `llama-3.3-70b-versatile` |
 | `DATABASE_PATH` | no | Defaults to `./campusos.db` |
 
-\* Exactly one model key is required. The dashboard shows which provider is active in the top-right; with no key it says so instead of failing silently.
+\* Exactly one model key is required — any one of the three. The dashboard shows which provider is active in the top-right; with no key it says so instead of failing silently.
+
+## What you can do in the dashboard
+
+Each of the five sections supports **add, edit and delete**, and every change is written to the database and reflected in the interface immediately.
+
+Rooms and events carry the two extra actions the brief asks for, and they sit on the row itself:
+
+- **Rooms** — **Book** opens a panel for date, time and purpose. It refuses a slot that already has a booking, a timetabled class or an event in that window, and names what is in the way. Bookings already held on the room are listed underneath with a **Cancel** on each.
+- **Events** — **Register** takes a place and updates the count; the button then becomes **Cancel place**. An event with no seats left shows a disabled **Full** rather than letting you try.
+
+These post to the same `/api/actions/*` endpoints the agent's tools call, so a room booked in the dashboard and one booked in chat are the same operation with the same conflict checks.
 
 ## Using the agent
 
@@ -139,7 +103,7 @@ Things it will not do: book a room that is occupied, register you twice for the 
 ```
 app/
   page.js                     dashboard + chat shell
-  ui/                         Workspace, RecordTable, RecordForm, Chat (client components)
+  ui/                         Workspace, RecordTable, RecordForm, BookingPanel, Chat (client components)
   api/[resource]/             GET list, POST create
   api/[resource]/[id]/        GET one, PATCH update, DELETE
   api/actions/[action]/       book-room, cancel-booking, register-event, cancel-registration
