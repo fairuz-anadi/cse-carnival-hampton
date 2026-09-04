@@ -1,0 +1,29 @@
+# Render blueprint for CampusOS.
+#
+# Two settings here are not Render's defaults and the deploy fails without them:
+#   buildCommand uses `npm install`, not `npm ci` - `npm ci` cannot install
+#     better-sqlite3 13.x without a C++ toolchain on the build image.
+#   DATABASE_PATH points at a mounted disk so campusos.db survives a restart.
+#     Persistent disks require a paid instance; on the free plan, drop the
+#     `disk:` block and the database resets whenever the service sleeps.
+services:
+  - type: web
+    name: campusos
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/meta
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: LLM_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false          # set this in Render's Environment tab, never in this file
+      - key: DATABASE_PATH
+        value: /var/data/campusos.db
+    disk:
+      name: campusos-data
+      mountPath: /var/data
+      sizeGB: 1
