@@ -35,14 +35,14 @@ export function ResourceForm({ fields, values, busy, submitLabel, onChange, onSu
       <div className="flex justify-end gap-3 pt-2">
         <button
           type="button"
-          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium text-black/70 transition duration-200 hover:bg-[#f6f5f4]"
           onClick={onCancel}
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+          className="rounded-lg bg-[#0075de] px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:bg-[#0063bd] disabled:opacity-60"
           disabled={busy}
         >
           {submitLabel}
@@ -63,11 +63,11 @@ function FormField({
 }) {
   const stringValue = Array.isArray(value) ? value.join(", ") : value == null ? "" : String(value);
   const baseClass =
-    "mt-1 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100";
+    "mt-1 min-h-10 w-full rounded-lg border border-black/10 bg-[#f6f5f4] px-3 py-2 text-sm text-black outline-none transition duration-200 placeholder:text-black/35 focus:border-[#0075de] focus:bg-white";
   const wide = field.type === "textarea" || field.type === "tags" ? "sm:col-span-2" : "";
 
   return (
-    <label className={`block text-sm font-medium text-slate-700 ${wide}`}>
+    <label className={`block text-sm font-medium text-black/70 ${wide}`}>
       {field.label}
       {field.type === "textarea" ? (
         <textarea
