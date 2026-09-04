@@ -30,5 +30,6 @@ export const PUT = (req, ctx) => patch(req, ctx.params);
 export async function DELETE(_req, { params }) {
   const { resource, id } = await params;
   if (!RESOURCES[resource]) return notFound('Resource');
-  return deleteRecord(resource, id) ? NextResponse.json({ ok: true, id }) : notFound(id);
+  const result = deleteRecord(resource, id);
+  return result ? NextResponse.json({ ok: true, ...result }) : notFound(id);
 }

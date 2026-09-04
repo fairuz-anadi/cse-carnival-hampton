@@ -160,6 +160,25 @@ const okEdit = updateRecord('events', 'evt-006', { capacity: 40 });
 check('raising capacity above the registered count is allowed', okEdit.capacity === 40, okEdit.capacity);
 check('and the seat count follows immediately', okEdit.seats_left === 10, okEdit.seats_left);
 
+
+section('Cascade and reset');
+const bookingsOn7B04 = listRooms().find((r) => r.id === 'room-011').bookings.length;
+const roomDel = deleteRecord('rooms', 'room-011');
+check('deleting 7B04 reports the bookings that went with it',
+  roomDel?.also_removed?.bookings === bookingsOn7B04 && bookingsOn7B04 > 0, roomDel);
+check('and the room is gone', listRooms().length === 19, listRooms().length);
+check('deleting something that is not there returns null', deleteRecord('rooms', 'room-999') === null);
+const evtDel = deleteRecord('events', 'evt-002');
+check('deleting an event reports its registrations',
+  evtDel?.also_removed?.registrations === 62, evtDel?.also_removed);
+
+const { getDb, seed } = await import('../lib/db.js');
+seed(getDb());
+check('reset puts every room back', listRooms().length === 20, listRooms().length);
+check('reset puts every event back', listEvents().length === 7, listEvents().length);
+check('reset restores the seeded bookings', listRooms().filter((r) => r.bookings.length).length === 3);
+check('reset restores evt-006 to full', listEvents().find((e) => e.id === 'evt-006').seats_left === 0);
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 fs.rmSync(process.env.DATABASE_PATH, { force: true });
 fs.rmSync(`${process.env.DATABASE_PATH}-wal`, { force: true });
