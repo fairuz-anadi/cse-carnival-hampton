@@ -48,6 +48,23 @@ LLM_PROVIDER=groq
 GROQ_API_KEY=your_key_here
 ```
 
+## Deploy to Render (One-Click)
+
+CampusOS is ready for production deployment on Render (free tier available):
+
+1. Go to https://render.com and sign in with GitHub
+2. Click **"New +"** → **"Web Service"**  
+3. Search for `fairuz-anadi/cse-carnival-hampton` and connect
+4. Configure:
+   - **Build:** `npm ci && npm run build`
+   - **Start:** `npm start`
+   - **Add one API key** (Groq recommended, free)
+5. Deploy — live in 3–5 minutes
+
+[See full deployment guide](./RENDER_DEPLOYMENT_GUIDE.md) for detailed instructions, troubleshooting, and FAQ.
+
+**Live demo link will appear in your Render dashboard.** Share it with judges — they can test without any local setup.
+
 The database file (`campusos.db`) is created and seeded from `data/*.json` the first time the app starts. To wipe it and reload the seed data at any point:
 
 ```bash
