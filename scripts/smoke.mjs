@@ -9,7 +9,10 @@ process.env.DATABASE_PATH = process.env.DATABASE_PATH || 'campusos.smoke.db';
 import fs from 'node:fs';
 if (fs.existsSync(process.env.DATABASE_PATH)) fs.rmSync(process.env.DATABASE_PATH);
 
-const { listSchedules, listRooms, listEvents, listAnnouncements, isoDate } = await import('../lib/store.js');
+const {
+  listSchedules, listRooms, listEvents, listAnnouncements, isoDate,
+  createRecord, updateRecord, deleteRecord, getOne,
+} = await import('../lib/store.js');
 const {
   findAvailableRooms, checkRoomAvailability, bookRoom, cancelBooking,
   registerForEvent, cancelRegistration, nextClass, assignmentsDue,
@@ -120,6 +123,61 @@ check('my own bookings are listable without reciting an id',
   mine.bookings.some((x) => x.booking_id === b9.booking_id), mine.bookings);
 check('every booking is attributed to the session student, never to chat text',
   mine.bookings.every((x) => x.booked_by === mine.student.name));
+
+
+section('Dashboard CRUD');
+const newClass = createRecord('schedules', {
+  course: 'CSE 4999', title: 'Test Class', day: 'Thursday',
+  start_time: '16:00', end_time: '17:00', room: '7A01', instructor: 'TBA', section: 'B',
+});
+check('add gives the next id in the seed sequence, not a uuid', /^sch-\d{3}$/.test(newClass.id), newClass.id);
+check('an added class is immediately readable back', getOne('schedules', newClass.id).course === 'CSE 4999');
+check('an added class appears in the day view straight away',
+  listSchedules({ day: 'Thursday' }).some((s) => s.id === newClass.id));
+const edited = updateRecord('schedules', newClass.id, { room: '7A02' });
+check('edit persists', edited.room === '7A02', edited.room);
+check('delete removes it', deleteRecord('schedules', newClass.id) && getOne('schedules', newClass.id) === null);
+
+section('Validation the dashboard shows to the user');
+const bad = (fn) => { try { fn(); return null; } catch (e) { return e; } };
+const v1 = bad(() => createRecord('schedules', { course: 'CSE 1', title: 'x', day: 'Thursday', start_time: '17:00', end_time: '15:00' }));
+check('a class ending before it starts is rejected', v1?.code === 'VALIDATION_ERROR' && !!v1.details.end_time, v1?.details);
+const v2 = bad(() => createRecord('schedules', { course: 'CSE 1', title: 'x', day: 'Friday', start_time: '09:00', end_time: '10:00' }));
+check('Friday is not a class day', !!v2?.details.day, v2?.details);
+const v3 = bad(() => createRecord('rooms', { room_number: '7A01', capacity: 30 }));
+check('a duplicate room number is rejected', !!v3?.details.room_number, v3?.details);
+const v4 = bad(() => createRecord('rooms', { room_number: '9Z99', capacity: 'lots' }));
+check('a non-numeric capacity is rejected', !!v4?.details.capacity, v4?.details);
+const v5 = bad(() => updateRecord('events', 'evt-006', { capacity: 5 }));
+check('event capacity cannot drop below the 30 already registered', !!v5?.details.capacity, v5?.details);
+const v6 = bad(() => createRecord('announcements', { title: 'x', body: 'y', date: '2026-09-10', expires: '2026-09-01' }));
+check('a notice cannot expire before it is posted', !!v6?.details.expires, v6?.details);
+const v7 = bad(() => createRecord('assignments', { course: 'CSE 1', title: 'x', deadline: 'next friday' }));
+check('a free-text deadline is rejected', !!v7?.details.deadline, v7?.details);
+check('every validation error names the field, so the form can point at it',
+  [v1, v2, v3, v4, v5, v6, v7].every((e) => e && Object.keys(e.details).length > 0));
+const okEdit = updateRecord('events', 'evt-006', { capacity: 40 });
+check('raising capacity above the registered count is allowed', okEdit.capacity === 40, okEdit.capacity);
+check('and the seat count follows immediately', okEdit.seats_left === 10, okEdit.seats_left);
+
+
+section('Cascade and reset');
+const bookingsOn7B04 = listRooms().find((r) => r.id === 'room-011').bookings.length;
+const roomDel = deleteRecord('rooms', 'room-011');
+check('deleting 7B04 reports the bookings that went with it',
+  roomDel?.also_removed?.bookings === bookingsOn7B04 && bookingsOn7B04 > 0, roomDel);
+check('and the room is gone', listRooms().length === 19, listRooms().length);
+check('deleting something that is not there returns null', deleteRecord('rooms', 'room-999') === null);
+const evtDel = deleteRecord('events', 'evt-002');
+check('deleting an event reports its registrations',
+  evtDel?.also_removed?.registrations === 62, evtDel?.also_removed);
+
+const { getDb, seed } = await import('../lib/db.js');
+seed(getDb());
+check('reset puts every room back', listRooms().length === 20, listRooms().length);
+check('reset puts every event back', listEvents().length === 7, listEvents().length);
+check('reset restores the seeded bookings', listRooms().filter((r) => r.bookings.length).length === 3);
+check('reset restores evt-006 to full', listEvents().find((e) => e.id === 'evt-006').seats_left === 0);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 fs.rmSync(process.env.DATABASE_PATH, { force: true });

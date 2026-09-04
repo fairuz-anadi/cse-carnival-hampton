@@ -25,62 +25,7 @@ The agent also handles the awkward cases. It checks announcements against the ti
 
 Four dependencies in total. There is no cloud database to provision and no account to create — clone, install, add one API key, run.
 
-<<<<<<< Updated upstream
 ## Setup
-=======
-```
-campusos-hackathon/
-│
-├── README.md                    ← You are here
-├── PROBLEM_STATEMENT.md         ← Full problem statement + scoring
-├── SUBMISSION.md                ← How and where to submit
-│
-├── data/                        ← Seed data (load these into your backend)
-│   ├── schedules.json
-│   ├── rooms.json
-│   ├── events.json
-│   ├── announcements.json
-│   └── assignments.json
-│
-├── schema/
-│   └── schema.md                ← Field names, types, and constraints for all 5 systems
-│
-└── sample_queries/
-    └── sample_queries.md        ← Queries we will use when judging your agent
-```
-
----
-
-## Run Locally
-
-```bash
-cd web
-npm install
-npm run dev
-```
-
-Open the local URL printed by Vite, usually `http://localhost:5173`. If that port is already in use, Vite will print the next available URL, such as `http://127.0.0.1:5174`. The Vite dev server includes the local `/api` backend, seeds from `data/*.json`, and persists dashboard/agent changes in `.campusos-db/campusos.json`.
-
-For a production-style run:
-
-```bash
-cd web
-npm run build
-npm start
-```
-
-Open `http://localhost:3000`.
-
----
-
-## How to Participate
-
-### 1. Fork the repository
-
-Click **Fork** in the top-right corner of this repo's GitHub page. This creates your own copy under your GitHub account, where you'll build your solution.
-
-### 2. Clone your fork
->>>>>>> Stashed changes
 
 ```bash
 git clone https://github.com/fairuz-anadi/cse-carnival-hampton.git

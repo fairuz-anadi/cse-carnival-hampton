@@ -1,13 +1,17 @@
 node_modules/
 .next/
 out/
-<<<<<<< Updated upstream
+dist/
+
+# Local env and secrets
 .env
 .env.local
+
+# Databases - never commit, judges would get our test bookings
 *.db
 *.db-shm
 *.db-wal
-=======
+*.db-journal
 .campusos-db/
 
 # Editors
@@ -16,8 +20,6 @@ out/
 *.swp
 
 # OS
->>>>>>> Stashed changes
 .DS_Store
 npm-debug.log*
 .broken_nm/
-*.db-journal
