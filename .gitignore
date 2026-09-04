@@ -1,11 +1,22 @@
 node_modules/
 .next/
 out/
+<<<<<<< Updated upstream
 .env
 .env.local
 *.db
 *.db-shm
 *.db-wal
+=======
+.campusos-db/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# OS
+>>>>>>> Stashed changes
 .DS_Store
 npm-debug.log*
 .broken_nm/
