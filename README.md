@@ -19,7 +19,7 @@ The agent also handles the awkward cases. It checks announcements against the ti
 | Framework | Next.js 15 (App Router), React 19 |
 | Language | JavaScript |
 | Database | SQLite via `better-sqlite3` — file-based, zero setup, persists across restarts |
-| LLM | Google Gemini (`gemini-2.5-flash`) by default; OpenAI and Groq also supported |
+| LLM | Google Gemini (`gemini-3.6-flash`) by default; OpenAI and Groq also supported |
 | Tool calling | Native function calling, called over the provider's REST API |
 | Styling | Hand-written CSS, no UI framework |
 
@@ -54,7 +54,7 @@ npm run seed
 | `GOOGLE_API_KEY` | yes* | Google AI Studio key — free at https://aistudio.google.com/apikey |
 | `OPENAI_API_KEY` | — | Alternative to the above; used if `GOOGLE_API_KEY` is absent |
 | `GROQ_API_KEY` | — | Second alternative |
-| `GEMINI_MODEL` | no | Defaults to `gemini-2.5-flash` |
+| `GEMINI_MODEL` | no | Defaults to `gemini-3.6-flash` |
 | `OPENAI_MODEL` | no | Defaults to `gpt-4o-mini` |
 | `GROQ_MODEL` | no | Defaults to `llama-3.3-70b-versatile` |
 | `DATABASE_PATH` | no | Defaults to `./campusos.db` |
@@ -93,7 +93,7 @@ lib/
   db.js                       schema, connection, seeding
   store.js                    reads and generic CRUD for all five systems
   actions.js                  booking, registration, availability and conflict logic
-  agent-tools.js              the 12 tool definitions + the system prompt
+  agent-tools.js              the 15 tool definitions + the system prompt
   llm.js                      function-calling loop (Gemini / OpenAI / Groq)
 data/                         the provided seed JSON, untouched
 ```
