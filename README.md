@@ -8,7 +8,7 @@ A campus data manager and an AI agent sitting on top of the same live database. 
 
 ## Project overview
 
-CampusOS holds five campus systems — class schedules, rooms, events, announcements and assignment deadlines — in a SQLite database seeded from the provided JSON files on first boot. The dashboard on the left lists all five and supports add, edit and delete on every one of them; changes are written to the database and appear in the interface immediately with no manual refresh. The agent on the right talks to a language model with **real function calling**: it has fifteen tools that query and mutate that same database, and it decides which to call. Because those tools run SQL at call time and nothing is cached, a change made in the dashboard a second earlier is what the agent reads. Every answer shows the tool calls it made underneath it, so you can see exactly what it read and what it did.
+CampusOS holds five campus systems — class schedules, rooms, events, announcements and assignment deadlines — in a SQLite database seeded from the provided JSON files on first boot. The dashboard lists all five and supports add, edit and delete on every one of them; changes are written to the database and appear in the interface immediately with no manual refresh. The assistant lives behind the round button in the bottom-right corner, and talks to a language model with **real function calling**: it has fifteen tools that query and mutate that same database, and it decides which to call. Because those tools run SQL at call time and nothing is cached, a change made in the dashboard a second earlier is what the agent reads.
 
 The agent also handles the awkward cases. It checks announcements against the timetable and tells you when a notice has moved a class. It refuses to book a room that already has a booking or a scheduled class in that window, and says what is in the way. When a request is too vague to act on — "just book me any room tomorrow afternoon" — it asks which room and which hours instead of guessing. And it declines to touch another student's registrations or bookings.
 
@@ -88,7 +88,14 @@ npm run seed
 
 ## What you can do in the dashboard
 
-Each of the five sections supports **add, edit and delete**, and every change is written to the database and reflected in the interface immediately.
+CampusOS runs as one of two people, switched from the toggle in the header:
+
+- **Student** — reads everything, books rooms, takes and gives up their own place at an event. Cannot add, edit or delete records, and cannot cancel a booking somebody else made.
+- **Department Admin** — everything above, plus managing the five systems and cancelling any booking.
+
+Those rules are enforced server-side in `lib/session.js` and `lib/require-admin.js`, so they hold for the dashboard and the agent alike. Switch role and the same request changes outcome: as a student, cancelling `bk-002` returns 403 and names whose booking it is; as staff it succeeds.
+
+Each of the five sections supports **add, edit and delete** *when you are acting as Department Admin*, and every change is written to the database and reflected in the interface immediately.
 
 Rooms and events carry the two extra actions the brief asks for, and they sit on the row itself:
 
@@ -99,7 +106,7 @@ These post to the same `/api/actions/*` endpoints the agent's tools call, so a r
 
 ## Using the agent
 
-Type into the panel on the right. It is built for the way a student actually asks:
+Open the assistant with the round button in the bottom-right corner. It is built for the way a student actually asks:
 
 - *When is my next class?*
 - *What classes do I have on Wednesday?*
@@ -111,7 +118,7 @@ Type into the panel on the right. It is built for the way a student actually ask
 - *Register me for the Guest Lecture on Deep Learning.*
 - *I need a room for 5 people with a projector, tomorrow between 2 and 4.*
 
-**To see the live-data behaviour:** open the Announcements tab, edit any notice, then ask the agent about it. Or edit a room's capacity and ask which rooms fit that many people. The answer changes on the next message — there is no refresh, no reindex, no restart.
+**To see the live-data behaviour:** switch to Department Admin, open the Notices tab, edit any notice, then ask the agent about it. Or edit a room's capacity and ask which rooms fit that many people. The answer changes on the next message — there is no refresh, no reindex, no restart.
 
 Things it will not do: book a room that is occupied, register you twice for the same event, act on another student's records, or book anything when you have not said which room or when.
 
@@ -130,6 +137,8 @@ lib/
   store.js                    reads and generic CRUD for all five systems
   actions.js                  booking, registration, availability and conflict logic
   agent-tools.js              the 15 tool definitions + the system prompt
+  session.js                  the two actors and what each may do
+  require-admin.js            guard used by every record-mutating route
   llm.js                      function-calling loop (Gemini / OpenAI / Groq)
 data/                         the provided seed JSON, untouched
 ```

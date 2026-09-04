@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { listAll, createRecord, RESOURCES, isoDate } from '@/lib/store';
 import { errorResponse, notFound } from '@/lib/api-error';
+import { requireAdmin } from '@/lib/require-admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,6 +43,8 @@ export async function GET(req, { params }) {
 export async function POST(req, { params }) {
   const { resource } = await params;
   if (!RESOURCES[resource]) return notFound('Resource');
+  const denied = requireAdmin();
+  if (denied) return denied;
   try {
     return NextResponse.json(createRecord(resource, await req.json()), { status: 201 });
   } catch (err) {

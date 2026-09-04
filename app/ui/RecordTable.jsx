@@ -15,7 +15,7 @@ function Cell({ col, row }) {
   );
 }
 
-export default function RecordTable({ resource, rows, onEdit, onDelete, busyId, extraActions, query }) {
+export default function RecordTable({ resource, rows, onEdit, onDelete, busyId, extraActions, query, canManage = true }) {
   const cfg = SECTIONS[resource];
   const [confirming, setConfirming] = useState(null);
 
@@ -62,8 +62,12 @@ export default function RecordTable({ resource, rows, onEdit, onDelete, busyId, 
                         disabled={a.disabled || busyId === row.id} title={a.title}
                         onClick={a.onClick}>{a.label}</button>
                     ))}
-                    <button className="btn ghost" onClick={() => onEdit(row)}>Edit</button>
-                    <button className="btn ghost danger" onClick={() => setConfirming(row.id)}>Delete</button>
+                    {canManage ? (
+                      <>
+                        <button className="btn ghost" onClick={() => onEdit(row)}>Edit</button>
+                        <button className="btn ghost danger" onClick={() => setConfirming(row.id)}>Delete</button>
+                      </>
+                    ) : null}
                   </>
                 )}
               </td>
