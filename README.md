@@ -1,29 +1,105 @@
-# CampusOS
+# CampusOS — Challenge Brief
 
-**AI Build Hackathon — AUST CSE Carnival 8.0**
+**AI Build Hackathon · AUST CSE Carnival 8.0**
 
-A campus data manager and an AI agent sitting on top of the same live database. Edit a room's capacity or post an announcement in the dashboard, then ask the agent about it in the panel beside it — it already knows, because every tool call reads the database at the moment it runs.
+*An intelligent university platform powered by an AI agent that understands and acts on real-time campus data.*
 
 ---
 
-## Project overview
+## What This Is About
 
-CampusOS holds five campus systems — class schedules, rooms, events, announcements and assignment deadlines — in a SQLite database seeded from the provided JSON files on first boot. The dashboard lists all five and supports add, edit and delete on every one of them; changes are written to the database and appear in the interface immediately with no manual refresh. The assistant lives behind the round button in the bottom-right corner, and talks to a language model with **real function calling**: it has fifteen tools that query and mutate that same database, and it decides which to call. Because those tools run SQL at call time and nothing is cached, a change made in the dashboard a second earlier is what the agent reads.
+Every student knows the feeling. You rush in for a 9 AM class and the room is empty, and now you're scrolling the group chat trying to work out whether it moved or got cancelled. Or you've got a free hour between classes and you actually want to use it, but you have no clue what's happening on campus right now. Or there's a deadline you completely forgot about until a friend mentions it like it's obvious.
 
-The agent also handles the awkward cases. It checks announcements against the timetable and tells you when a notice has moved a class. It refuses to book a room that already has a booking or a scheduled class in that window, and says what is in the way. When a request is too vague to act on — "just book me any room tomorrow afternoon" — it asks which room and which hours instead of guessing. And it declines to touch another student's registrations or bookings.
+The information exists somewhere. It's just scattered across notices, chats, spreadsheets, and people's memory, and never in one place when you need it.
 
-## Tech stack
+**CampusOS** fixes that. It keeps a student's campus information in one place and puts an AI agent on top of it that can actually answer questions and get things done. Not a toy chatbot that guesses, but an agent that reads the real data and acts on it.
 
-| Layer | Choice |
-|---|---|
-| Framework | Next.js 15 (App Router), React 19 |
-| Language | JavaScript |
-| Database | SQLite via `better-sqlite3` — file-based, zero setup, persists across restarts |
-| LLM | Google Gemini (`gemini-3.6-flash`) by default; OpenAI and Groq also supported |
-| Tool calling | Native function calling, called over the provider's REST API |
-| Styling | Hand-written CSS, no UI framework |
+---
 
-Four dependencies in total. There is no cloud database to provision and no account to create — clone, install, add one API key, run.
+## What You Will Build
+
+Two parts that work together.
+
+### Part 1 — The Campus Data Manager
+
+This is the part that holds the data and lets people manage it. It is worth just as much as the agent, so build it properly.
+
+The app displays class schedules, rooms, events, announcements, and assignment deadlines in a clean, usable interface with a clear section for each of the five systems. From there, a user should be able to actually change things, not just stare at them:
+
+- **Add** a record — post a new announcement, create an event, add a class to the schedule
+- **Edit** a record — fix a class time, update a room's capacity, change an event's details
+- **Delete** a record — cancel a class, take down an expired notice, remove an event
+
+What really matters is what happens after each change. Every add, edit, or delete should show up in the interface right away, with no manual refresh. Add an event and it appears in the list. Change a room's capacity and the new number is what you see. Delete a notice and it is gone from the board.
+
+The change also has to be real, not just on screen. It is saved to your backend, so if someone reloads the page or reopens the app, everything is exactly as they left it. **A change made here becomes the new truth for the whole app.**
+
+### Part 2 — The AI Agent
+
+This is where a student just talks to CampusOS the way they would ask a helpful senior who somehow knows everything about campus.
+
+The agent always works off the **current data**. So if someone updates a room or posts a notice through Part 1, the agent already knows about it the next time you ask. A good agent can:
+- Look something up
+- Stitch together an answer from a few different places
+- Take an action when you ask it to
+- Check back with you when your request is unclear
+- Say no when you are asking for something you should not be able to do
+
+---
+
+## The Data You Will Work With
+
+You will get seed data for five systems. The app lets people view and fully manage (add, edit, delete) all five, plus the extra actions noted for rooms and events.
+
+| System | Fields | What You Can Do |
+|--------|--------|-----------------|
+| Schedule | Course, time, room, day, instructor | View, add, edit, delete |
+| Room | Room number, capacity, equipment | View, add, edit, delete, **book**, **cancel** |
+| Event | Name, date, time, capacity | View, add, edit, delete, **register**, **cancel** |
+| Announcement | Title, body, date, priority | View, add, edit, delete |
+| Assignment | Course, title, deadline, status | View, add, edit, delete |
+
+See [`schema/schema.md`](./schema/schema.md) for the exact field names and types.
+
+---
+
+## A Quick Example
+
+Here is the exact kind of moment CampusOS is built for.
+
+**Step 1.** In the dashboard, someone edits an announcement so that *"CSE321 class cancelled"* becomes *"CSE321 moved to Room 304 at 2:00 PM."*
+
+**Step 2.** A few minutes later, a student opens the chat and asks, *"Where is my CSE321 class today?"*
+
+**Step 3.** The agent checks the latest announcement and replies, *"CSE321 has been moved to Room 304 today at 2:00 PM."*
+
+That is the whole idea. The data lives in your app, someone changed it a minute ago, and the agent already knows.
+
+---
+
+## What the Agent Should Handle
+
+These are the kinds of things a student might actually throw at your agent on a normal day. Some are simple, some need a bit more thinking. Try to handle as many as you can, and handle them well.
+
+- *"When is my next class?"*
+- *"What have I got due this week?"*
+- *"I am free until 2 — is there anything on campus I could drop into?"*
+- *"Book Room 302 tomorrow, 3 to 5 PM."*
+- *"I need a room for 5 people with a projector, tomorrow between 2 and 4."*
+- *"Just book me any room tomorrow afternoon."*
+
+See [`sample_queries/sample_queries.md`](./sample_queries/sample_queries.md) for the full list of test queries used during judging.
+
+---
+
+## The Rules
+
+- Build it on **whatever you want**. Any language, any framework, any platform — web, mobile, desktop, or even a terminal app. No restrictions.
+- Use **any LLM** you like (OpenAI, Gemini, Groq, Anthropic, or whatever you are comfortable with).
+- The agent **must** use real tool calling / function calling to read and change data. Faking it with prompt chaining does not count.
+- **Both parts have to be there**, and both have to run on our machine straight from your submission.
+
+---
 
 ## Setup
 
@@ -41,123 +117,72 @@ npm run dev
 
 Open **http://localhost:3000**.
 
-**Which key to use.** Any one of Groq, OpenAI or Google works. If you are picking one now, use **Groq** — it is free and its limits are generous. Google's free tier allows only **20 requests per day**, and one agent question costs 2–4 requests, so a fresh Google key runs dry after roughly six questions.
+### Which key to use
+
+Any one of Groq, OpenAI or Google works. This project uses **OpenAI**:
 
 ```
-LLM_PROVIDER=groq
-GROQ_API_KEY=your_key_here
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-proj-your_key_here
+OPENAI_MODEL=gpt-4o-mini
 ```
 
-## Deploy to Render (One-Click)
+See the **Environment variables** section below for all options.
 
-CampusOS is ready for production deployment on Render (free tier available):
+---
 
-1. Go to https://render.com and sign in with GitHub
-2. Click **"New +"** → **"Web Service"**  
-3. Search for `fairuz-anadi/cse-carnival-hampton` and connect
-4. Configure:
-   - **Build:** `npm ci && npm run build`
-   - **Start:** `npm start`
-   - **Add one API key** (Groq recommended, free)
-5. Deploy — live in 3–5 minutes
-
-[See full deployment guide](./RENDER_DEPLOYMENT_GUIDE.md) for detailed instructions, troubleshooting, and FAQ.
-
-**Live demo link will appear in your Render dashboard.** Share it with judges — they can test without any local setup.
-
-The database file (`campusos.db`) is created and seeded from `data/*.json` the first time the app starts. To wipe it and reload the seed data at any point:
-
-```bash
-npm run seed
-```
-
-## Environment variables
+## Environment Variables
 
 | Key | Required | Notes |
 |---|---|---|
-| `LLM_PROVIDER` | no | `groq`, `openai` or `gemini`. Set it when more than one key is present, otherwise the first key found wins |
-| `GROQ_API_KEY` | yes* | Free and generous — https://console.groq.com/keys. The recommended choice |
-| `OPENAI_API_KEY` | yes* | Paid — https://platform.openai.com/api-keys |
+| `LLM_PROVIDER` | no | `openai` (default), `groq`, or `gemini`. Set it when more than one key is present, otherwise the first key found wins |
+| `OPENAI_API_KEY` | yes* | Required for OpenAI — https://platform.openai.com/api-keys |
+| `OPENAI_MODEL` | no | Defaults to `gpt-4o-mini` |
+| `GROQ_API_KEY` | yes* | Free and generous — https://console.groq.com/keys |
+| `GROQ_MODEL` | no | Defaults to `llama-3.3-70b-versatile` |
 | `GOOGLE_API_KEY` | yes* | Free at https://aistudio.google.com/apikey, but capped at 20 requests/day |
 | `GEMINI_MODEL` | no | Defaults to `gemini-3.6-flash` |
-| `OPENAI_MODEL` | no | Defaults to `gpt-4o-mini` |
-| `GROQ_MODEL` | no | Defaults to `llama-3.3-70b-versatile` |
 | `DATABASE_PATH` | no | Defaults to `./campusos.db` |
 
-\* Exactly one model key is required — any one of the three. The dashboard shows which provider is active in the top-right; with no key it says so instead of failing silently.
+\* Exactly one model key is required — any one of the three.
 
-## What you can do in the dashboard
+---
 
-CampusOS runs as one of two people, switched from the toggle in the header:
+## How We Will Score It
 
-- **Student** — reads everything, books rooms, takes and gives up their own place at an event. Cannot add, edit or delete records, and cannot cancel a booking somebody else made.
-- **Department Admin** — everything above, plus managing the five systems and cancelling any booking.
+| Criteria | Marks |
+|----------|-------|
+| Data Management — backend data loaded and shown clearly in the interface | 20 |
+| CRUD Operations — add, edit, and delete all work, and changes stay saved | 20 |
+| AI Agent (broken down below) | 40 |
+| UI / UX and Design — how usable, clear, and polished it is | 20 |
+| **Total** | **100** |
 
-Those rules are enforced server-side in `lib/session.js` and `lib/require-admin.js`, so they hold for the dashboard and the agent alike. Switch role and the same request changes outcome: as a student, cancelling `bk-002` returns 403 and names whose booking it is; as staff it succeeds.
+### The AI Agent's 40 Marks Break Down Like This
 
-Each of the five sections supports **add, edit and delete** *when you are acting as Department Admin*, and every change is written to the database and reflected in the interface immediately.
+| Criteria | Marks |
+|----------|-------|
+| Answering questions correctly across the data | 10 |
+| Taking the right actions (booking a room, registering for an event, and so on) | 10 |
+| Always using the latest data, so recent edits show up right away | 10 |
+| Handling vague or unauthorized requests — asking when unclear, refusing when it should not act | 10 |
 
-Rooms and events carry the two extra actions the brief asks for, and they sit on the row itself:
+### Bonus Points
 
-- **Rooms** — **Book** opens a panel for date, time and purpose. It refuses a slot that already has a booking, a timetabled class or an event in that window, and names what is in the way. Bookings already held on the room are listed underneath with a **Cancel** on each.
-- **Events** — **Register** takes a place and updates the count; the button then becomes **Cancel place**. An event with no seats left shows a disabled **Full** rather than letting you try.
+- Deploying the project live
+- Clean, readable, well-organized code
 
-These post to the same `/api/actions/*` endpoints the agent's tools call, so a room booked in the dashboard and one booked in chat are the same operation with the same conflict checks.
+---
 
-## Using the agent
+## Submission
 
-Open the assistant with the round button in the bottom-right corner. It is built for the way a student actually asks:
+Submit a link to your GitHub repository. Keep it public and include a clear README with steps to run everything locally — we will run it and talk to the agent ourselves.
 
-- *When is my next class?*
-- *What classes do I have on Wednesday?*
-- *What have I got due this week?*
-- *Show me all high priority announcements.*
-- *I'm free until 2 PM — is there anything on campus I could drop into?*
-- *Which labs have a projector and can fit at least 30 people?*
-- *Book Room 7A02 tomorrow from 3 PM to 5 PM.*
-- *Register me for the Guest Lecture on Deep Learning.*
-- *I need a room for 5 people with a projector, tomorrow between 2 and 4.*
+See [`SUBMISSION.md`](./SUBMISSION.md) for full submission details.
 
-**To see the live-data behaviour:** switch to Department Admin, open the Notices tab, edit any notice, then ask the agent about it. Or edit a room's capacity and ask which rooms fit that many people. The answer changes on the next message — there is no refresh, no reindex, no restart.
+---
 
-Things it will not do: book a room that is occupied, register you twice for the same event, act on another student's records, or book anything when you have not said which room or when.
-
-## How it works
-
-```
-app/
-  page.js                     dashboard + chat shell
-  ui/                         Workspace, RecordTable, RecordForm, BookingPanel, Chat (client components)
-  api/[resource]/             GET list, POST create
-  api/[resource]/[id]/        GET one, PATCH update, DELETE
-  api/actions/[action]/       book-room, cancel-booking, register-event, cancel-registration
-  api/chat/                   the agent loop
-lib/
-  db.js                       schema, connection, seeding
-  store.js                    reads and generic CRUD for all five systems
-  actions.js                  booking, registration, availability and conflict logic
-  agent-tools.js              the 15 tool definitions + the system prompt
-  session.js                  the two actors and what each may do
-  require-admin.js            guard used by every record-mutating route
-  llm.js                      function-calling loop (Gemini / OpenAI / Groq)
-data/                         the provided seed JSON, untouched
-```
-
-The five systems are normalised into seven tables — room bookings and event registrations are child tables with foreign keys rather than JSON blobs, which is what makes overlap checks and seat counts correct rather than approximate. Event registration counts are computed from the registrations table on every read, so they can never drift from the underlying rows.
-
-## Agent tools
-
-Eleven read tools and four that write.
-
-**Read** — `get_current_datetime` · `get_class_schedule` · `get_next_class` · `get_assignments` · `get_announcements` · `get_events` · `get_rooms` · `find_available_rooms` · `check_room_availability` · `whats_on` · `get_my_bookings_and_registrations`
-
-**Write** — `book_room` · `cancel_room_booking` · `register_for_event` · `cancel_event_registration`
-
-Three of these are worth calling out:
-
-- `find_available_rooms` excludes a room if it has an overlapping booking, a timetabled class **or** an event held there in that window, so "free" means actually free.
-- `check_room_availability` answers "is 7A02 free at 3?" without writing anything. Without it the only way to test a named room is to try booking it, which is a mutation.
-- `get_current_datetime` returns the campus clock in Asia/Dhaka, so "tomorrow" is resolved against the real date instead of whatever the model assumed. Every date the tools accept is resolved in that same zone, on any machine.
+> What we actually care about is whether it **works**. Correct answers, editing that saves properly, and an app people can genuinely use will beat a flashy demo that falls apart the moment we try something real.
 
 There is deliberately **no** tool that creates, edits or deletes a schedule, room, event, announcement or assignment. Those are dashboard operations. A student asking the agent to delete a notice is refused because the capability genuinely is not there, not because a prompt talked it out of it.
 
